@@ -1,0 +1,726 @@
+<title>Mahima Leave Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f3f6f5; --surface:#ffffff; --surface-2:#e9efed; --line:#d3dedb;
+  --ink:#12343b; --ink-2:#4b6268; --ink-3:#7d9095;
+  --accent:#0f6e6a; --accent-ink:#ffffff; --accent-soft:#d6ece9;
+  --mark:#e2a52a;
+  --ok:#2f8a4e; --ok-soft:#dcf0e2; --warn:#a86b00; --warn-soft:#fbeccb; --bad:#b33a4a; --bad-soft:#f7dde1;
+  --t-annual:#1f8a83; --t-sick:#c2505f; --t-personal:#7a5bc0; --t-wfh:#3a78c2; --t-training:#c07a1c; --t-other:#6b7f86;
+  --weekend:#edf1f0;
+  --shadow:0 1px 2px rgba(18,52,59,.06),0 6px 24px rgba(18,52,59,.06);
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0d1b1e; --surface:#132629; --surface-2:#1a3135; --line:#26434a;
+    --ink:#e4efed; --ink-2:#a9bec0; --ink-3:#7a9296;
+    --accent:#4fc2b9; --accent-ink:#06201e; --accent-soft:#16403e;
+    --mark:#f0b84a;
+    --ok:#6fcf8d; --ok-soft:#173826; --warn:#f0b84a; --warn-soft:#3a2d10; --bad:#f08593; --bad-soft:#3d1a20;
+    --t-annual:#4fc2b9; --t-sick:#f08593; --t-personal:#b39cf0; --t-wfh:#7fb0f0; --t-training:#f0b060; --t-other:#9fb2b7;
+    --weekend:#102124;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1b1e; --surface:#132629; --surface-2:#1a3135; --line:#26434a;
+  --ink:#e4efed; --ink-2:#a9bec0; --ink-3:#7a9296;
+  --accent:#4fc2b9; --accent-ink:#06201e; --accent-soft:#16403e;
+  --mark:#f0b84a;
+  --ok:#6fcf8d; --ok-soft:#173826; --warn:#f0b84a; --warn-soft:#3a2d10; --bad:#f08593; --bad-soft:#3d1a20;
+  --t-annual:#4fc2b9; --t-sick:#f08593; --t-personal:#b39cf0; --t-wfh:#7fb0f0; --t-training:#f0b060; --t-other:#9fb2b7;
+  --weekend:#102124;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(26px,4vw,36px);font-weight:700;line-height:1.1}
+h2{font-size:20px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);font-weight:600}
+.muted{color:var(--ink-2)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.brand{display:flex;flex-direction:column;gap:4px}
+.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.status-pill i{width:8px;height:8px;border-radius:50%;background:var(--ink-3);display:inline-block}
+.status-pill.live i{background:var(--ok)}
+.status-pill.local i{background:var(--mark)}
+
+/* today strip */
+.today{background:var(--ink);color:var(--bg);border-radius:14px;padding:16px 18px;display:grid;grid-template-columns:auto 1fr;gap:10px 20px;align-items:center}
+.today .eyebrow{color:color-mix(in srgb,var(--bg) 65%,transparent)}
+.today-date{font-family:var(--f-display);font-size:22px;font-weight:700;line-height:1.1}
+.today-list{display:flex;flex-wrap:wrap;gap:8px}
+.today-list .chip{background:color-mix(in srgb,var(--bg) 12%,transparent);color:var(--bg)}
+.today-empty{color:color-mix(in srgb,var(--bg) 75%,transparent);font-size:14px}
+@media (max-width:560px){.today{grid-template-columns:1fr}}
+
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;font-weight:500;background:var(--surface-2);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c,var(--t-other))}
+
+/* main grid */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+@media (max-width:920px){.main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px}
+
+/* year + months */
+.cal-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.month-title{font-family:var(--f-display);font-size:24px;font-weight:700}
+.nav{display:flex;gap:6px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 12px;font-weight:600;font-size:14px;line-height:1.2}
+.btn:hover{background:var(--surface-2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:4px 9px;font-size:12.5px;border-radius:7px}
+.btn.ok{color:var(--ok)} .btn.bad{color:var(--bad)}
+.years{display:flex;gap:4px;background:var(--surface-2);padding:3px;border-radius:10px}
+.years button{border:0;background:transparent;padding:5px 12px;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink-2)}
+.years button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin-bottom:14px}
+@media (max-width:640px){.months{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.months button{border:1px solid transparent;background:var(--surface-2);border-radius:8px;padding:6px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.months button b{font-family:var(--f-mono);font-weight:500;font-size:11px;color:var(--ink-3)}
+.months button.has b{color:var(--accent)}
+.months button[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.months button:disabled{opacity:.35;cursor:not-allowed}
+
+.cal-scroll{overflow-x:auto}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(92px,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);min-width:644px}
+.cal .dow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:600;padding:6px 8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.day{min-height:96px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px 6px 6px;display:flex;flex-direction:column;gap:3px;background:var(--surface);text-align:left;border-top:0;border-left:0;cursor:pointer}
+.day:hover{background:var(--accent-soft)}
+.day.we{background:var(--weekend)}
+.day.pad{background:transparent;cursor:default}
+.day.pad:hover{background:transparent}
+.day.locked{cursor:default;opacity:.45}
+.day.locked:hover{background:var(--surface)}
+.dnum{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;align-items:center}
+.day.is-today .dnum span{background:var(--mark);color:#1b1300;border-radius:5px;padding:0 5px;font-weight:600}
+.bar{display:flex;align-items:center;gap:5px;font-size:12px;line-height:1.3;border-radius:5px;padding:2px 6px;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);flex:none}
+.bar.pending{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c) 14%,transparent) 0 5px,transparent 5px 9px);outline:1px dashed color-mix(in srgb,var(--c) 60%,transparent);outline-offset:-1px}
+.more{font-size:11.5px;color:var(--ink-3);padding-left:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .sw{width:14px;height:10px;border-radius:3px;background:var(--surface-2);outline:1px dashed var(--ink-3);outline-offset:-1px}
+
+/* form */
+form{display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label,.lbl{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=text],input[type=date],select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:8px 10px;font-size:14.5px;min-width:0}
+textarea{resize:vertical;min-height:62px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.hint{font-size:12.5px;color:var(--ink-3)}
+.calc{display:flex;justify-content:space-between;align-items:baseline;background:var(--surface-2);border-radius:9px;padding:8px 12px;font-size:13.5px}
+.calc b{font-family:var(--f-mono);font-size:16px}
+.clash{font-size:13px;background:var(--warn-soft);color:var(--warn);border-radius:9px;padding:8px 10px}
+.msg{font-size:13px;border-radius:9px;padding:8px 10px}
+.msg.err{background:var(--bad-soft);color:var(--bad)}
+.msg.good{background:var(--ok-soft);color:var(--ok)}
+
+/* list */
+.list-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters select{width:auto}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:680px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.note{font-size:12.5px;color:var(--ink-3);margin-top:2px;max-width:34ch}
+.st{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px}
+.st.pending{background:var(--warn-soft);color:var(--warn)}
+.st.approved{background:var(--ok-soft);color:var(--ok)}
+.st.declined{background:var(--bad-soft);color:var(--bad)}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.empty{padding:28px 10px;text-align:center;color:var(--ink-3)}
+
+.lower{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:920px){.lower{grid-template-columns:1fr}}
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+pre.tpl{margin:0;background:var(--surface-2);border-radius:9px;padding:10px 12px;font-family:var(--f-mono);font-size:12px;overflow-x:auto;width:100%}
+.stack{display:flex;flex-direction:column;gap:12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:var(--shadow);z-index:10;max-width:calc(100% - 32px)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:no-preference){.day,.btn,.months button{transition:background .15s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Mahima team · Leave schedule</span>
+      <h1>Who's away, and when</h1>
+      <span class="muted">Schedule from 1 September 2026 through 2028. Pick a day on the calendar to start a request.</span>
+    </div>
+    <span class="status-pill" id="conn"><i></i><span>Connecting…</span></span>
+  </header>
+
+  <section class="today" aria-live="polite">
+    <div>
+      <div class="eyebrow">Away today</div>
+      <div class="today-date" id="todayDate"></div>
+    </div>
+    <div class="today-list" id="todayList"></div>
+  </section>
+
+  <div class="main">
+    <section class="panel" aria-label="Calendar">
+      <div class="cal-head">
+        <div class="nav">
+          <button class="btn" id="prev" aria-label="Previous month">‹</button>
+          <div class="month-title" id="monthTitle"></div>
+          <button class="btn" id="next" aria-label="Next month">›</button>
+        </div>
+        <div class="years" id="years" role="group" aria-label="Year"></div>
+      </div>
+      <div class="months" id="months"></div>
+      <div class="cal-scroll"><div class="cal" id="cal"></div></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="panel" aria-label="Request leave">
+      <form id="reqForm" novalidate>
+        <div>
+          <h2>Request leave</h2>
+          <p class="hint" style="margin:2px 0 0">New requests start as <b>pending</b> until a team lead approves them.</p>
+        </div>
+        <div class="field">
+          <label for="fName">Your name</label>
+          <input type="text" id="fName" list="nameList" autocomplete="name" placeholder="e.g. Fransiska" required>
+          <datalist id="nameList"></datalist>
+        </div>
+        <div class="field">
+          <label for="fType">Leave type</label>
+          <select id="fType"></select>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="fStart">From</label><input type="date" id="fStart" required></div>
+          <div class="field"><label for="fEnd">To</label><input type="date" id="fEnd" required></div>
+        </div>
+        <label class="check"><input type="checkbox" id="fHalf"> Half day (single date only)</label>
+        <div class="calc"><span class="muted">Working days</span><b id="fDays">–</b></div>
+        <div class="clash" id="fClash" hidden></div>
+        <div class="field">
+          <label for="fNote">Note <span class="hint">(optional)</span></label>
+          <textarea id="fNote" placeholder="Reason, handover contact, travel plans…"></textarea>
+        </div>
+        <div class="msg" id="fMsg" hidden></div>
+        <button class="btn primary" id="fSubmit" type="submit">Submit request</button>
+      </form>
+    </aside>
+  </div>
+
+  <section class="panel" aria-label="All leave requests">
+    <div class="list-head">
+      <div>
+        <h2>Leave requests</h2>
+        <span class="hint" id="listCount"></span>
+      </div>
+      <div class="filters">
+        <label class="sr" for="filterPerson">Person</label>
+        <select id="filterPerson"></select>
+        <label class="sr" for="filterStatus">Status</label>
+        <select id="filterStatus">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="declined">Declined</option>
+        </select>
+        <label class="check"><input type="checkbox" id="filterUpcoming" checked> Upcoming only</label>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Person</th><th>Type</th><th>Dates</th><th class="num">Days</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="lower">
+    <section class="panel stack" aria-label="Upload schedule">
+      <div>
+        <h2>Upload a schedule</h2>
+        <p class="hint" style="margin:2px 0 0">Import many leave dates at once from a CSV file (export one from Excel or Google Sheets with <i>File → Download → CSV</i>).</p>
+      </div>
+      <div class="drop" id="drop">
+        <label class="btn" for="csvFile" style="display:inline-block">Choose CSV file</label>
+        <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" class="sr">
+        <span class="hint">…or drop it here. Columns: name, type, start, end, note, status. Dates as 2026-09-15 or 15/09/2026.</span>
+        <pre class="tpl" id="tpl">name,type,start,end,note,status
+Fransiska,annual,2026-10-12,2026-10-16,Family trip,approved
+Ayu,sick,15/09/2026,15/09/2026,,approved</pre>
+        <button class="btn small" type="button" id="copyTpl">Copy template</button>
+      </div>
+      <div class="msg" id="impMsg" hidden></div>
+      <div class="actions" id="impActions" hidden>
+        <button class="btn primary" type="button" id="impGo">Import</button>
+        <button class="btn" type="button" id="impCancel">Cancel</button>
+      </div>
+    </section>
+
+    <section class="panel stack" aria-label="Totals">
+      <div class="list-head" style="margin:0">
+        <div>
+          <h2>Days taken</h2>
+          <span class="hint">Approved working days, per person, <span id="totYearLbl"></span></span>
+        </div>
+        <button class="btn small" type="button" id="copyCsv">Copy all as CSV</button>
+      </div>
+      <div class="tbl-wrap">
+        <table style="min-width:420px">
+          <thead id="totHead"></thead>
+          <tbody id="totRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const START = "2026-09-01", END = "2028-12-31";
+  const FIRST_Y = 2026, FIRST_M = 8, LAST_Y = 2028;
+  const TYPES = {
+    annual:   {label:"Annual leave",     c:"var(--t-annual)"},
+    sick:     {label:"Sick leave",       c:"var(--t-sick)"},
+    personal: {label:"Personal / family",c:"var(--t-personal)"},
+    wfh:      {label:"Work from home",   c:"var(--t-wfh)"},
+    training: {label:"Training / event", c:"var(--t-training)"},
+    other:    {label:"Other",            c:"var(--t-other)"}
+  };
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const $ = id => document.getElementById(id);
+
+  /* ---------- dates ---------- */
+  const pad = n => String(n).padStart(2,"0");
+  const iso = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+  const parts = s => s.split("-").map(Number);
+  const toDate = s => { const [y,m,d] = parts(s); return new Date(Date.UTC(y,m-1,d)); };
+  const fromDate = dt => iso(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+  const addDays = (s,n) => { const d = toDate(s); d.setUTCDate(d.getUTCDate()+n); return fromDate(d); };
+  const isWeekend = s => { const w = toDate(s).getUTCDay(); return w === 0 || w === 6; };
+  const now = new Date();
+  const TODAY = iso(now.getFullYear(), now.getMonth(), now.getDate());
+  function workDays(l){
+    if (!l.start || !l.end || l.end < l.start) return 0;
+    if (l.halfDay) return isWeekend(l.start) ? 0 : 0.5;
+    let n = 0;
+    for (let d = l.start; d <= l.end; d = addDays(d,1)) if (!isWeekend(d)) n++;
+    return n;
+  }
+  function daysInRange(l, from, to){ // working days of l that fall inside [from,to]
+    const s = l.start > from ? l.start : from, e = l.end < to ? l.end : to;
+    if (e < s) return 0;
+    if (l.halfDay) return isWeekend(s) ? 0 : 0.5;
+    let n = 0; for (let d = s; d <= e; d = addDays(d,1)) if (!isWeekend(d)) n++;
+    return n;
+  }
+  const fmt = s => { const [y,m,d] = parts(s); return `${d} ${MONTHS[m-1].slice(0,3)} ${y}`; };
+  function fmtRange(l){
+    if (l.start === l.end) return fmt(l.start) + (l.halfDay ? " (½ day)" : "");
+    const [y1,m1,d1] = parts(l.start), [y2,m2,d2] = parts(l.end);
+    if (y1 === y2 && m1 === m2) return `${d1}–${d2} ${MONTHS[m1-1].slice(0,3)} ${y1}`;
+    if (y1 === y2) return `${d1} ${MONTHS[m1-1].slice(0,3)} – ${d2} ${MONTHS[m2-1].slice(0,3)} ${y1}`;
+    return `${fmt(l.start)} – ${fmt(l.end)}`;
+  }
+  const fmtNum = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
+
+  /* ---------- state ---------- */
+  let leaves = [];               // [{id, name, type, start, end, halfDay, note, status, createdBy, createdAt}]
+  let me = {id:null, name:""};
+  let canApprove = false, canWrite = true;
+  let startView = TODAY >= START && TODAY <= END ? TODAY : START;
+  let viewY = parts(startView)[0], viewM = parts(startView)[1]-1;
+  let pendingImport = null;
+
+  /* ---------- storage: shared db, with a local fallback ---------- */
+  const LS_KEY = "mahima-leave-local";
+  const store = {
+    mode:"local", col:null,
+    async init(){
+      const claude = window.claude;
+      const db = claude && claude.use ? await claude.use("db") : null;
+      if (db) {
+        this.mode = "live"; this.col = db.collection("leaves");
+        const user = await claude.use("user");
+        if (user) {
+          const v = await user.me();
+          me = {id:v.id, name:v.name || ""};
+          canApprove = await user.canEdit();
+          const w = await user.can("data.write");
+          canWrite = w !== false;
+        }
+        this.col.onSnapshot(snap => {
+          leaves = snap.docs.map(d => ({id:d.id, ...d.data()}));
+          render();
+        }, err => { setConn("local", "Connection lost — reload the page"); console.warn(err); });
+      } else {
+        this.mode = "local"; canApprove = true;
+        try { leaves = JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { leaves = []; }
+        render();
+      }
+      setConn(this.mode, this.mode === "live" ? "Live · shared with the team" : "Saved in this browser only");
+    },
+    saveLocal(){ try { localStorage.setItem(LS_KEY, JSON.stringify(leaves)); } catch {} render(); },
+    async add(data){
+      if (this.mode === "live") { await this.col.add(data); return; }
+      leaves.push({id: "l" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), ...data}); this.saveLocal();
+    },
+    async update(id, patch){
+      if (this.mode === "live") { await this.col.doc(id).update(patch); return; }
+      const l = leaves.find(x => x.id === id); if (l) Object.assign(l, patch); this.saveLocal();
+    },
+    async remove(id){
+      if (this.mode === "live") { await this.col.doc(id).delete(); return; }
+      leaves = leaves.filter(x => x.id !== id); this.saveLocal();
+    }
+  };
+  function setConn(mode, text){
+    const el = $("conn"); el.className = "status-pill " + mode; el.lastElementChild.textContent = text;
+  }
+
+  /* ---------- helpers ---------- */
+  const active = l => l.status !== "declined";
+  const onDay = (d) => leaves.filter(l => active(l) && l.start <= d && l.end >= d)
+                             .sort((a,b) => (a.status === "pending") - (b.status === "pending") || a.name.localeCompare(b.name));
+  const people = () => [...new Set(leaves.map(l => (l.name || "").trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+  const typeOf = t => TYPES[t] || TYPES.other;
+  function el(tag, attrs = {}, ...kids){
+    const e = document.createElement(tag);
+    for (const [k,v] of Object.entries(attrs)) {
+      if (k === "class") e.className = v; else if (k === "style") e.style.cssText = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+    return e;
+  }
+  let toastT;
+  function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2800); }
+
+  /* ---------- render ---------- */
+  function render(){ renderToday(); renderYears(); renderMonths(); renderCal(); renderList(); renderTotals(); renderNames(); updateCalc(); }
+
+  function renderToday(){
+    const [y,m,d] = parts(TODAY);
+    $("todayDate").textContent = `${toDate(TODAY).toLocaleDateString("en-GB",{weekday:"long",timeZone:"UTC"})}, ${d} ${MONTHS[m-1]}`;
+    const list = $("todayList"); list.replaceChildren();
+    const out = onDay(TODAY);
+    if (!out.length) { list.append(el("span",{class:"today-empty"}, isWeekend(TODAY) ? "It's the weekend." : "Everyone is in today.")); return; }
+    for (const l of out) {
+      const c = el("span",{class:"chip"}, el("span",{class:"dot",style:`--c:${typeOf(l.type).c}`}), `${l.name} · ${typeOf(l.type).label}${l.status === "pending" ? " (pending)" : ""}`);
+      list.append(c);
+    }
+  }
+
+  function renderYears(){
+    const box = $("years"); box.replaceChildren();
+    for (let y = FIRST_Y; y <= LAST_Y; y++) {
+      box.append(el("button",{type:"button","aria-pressed":String(y === viewY), onclick:() => { viewY = y; if (y === FIRST_Y && viewM < FIRST_M) viewM = FIRST_M; render(); }}, String(y)));
+    }
+  }
+
+  function renderMonths(){
+    const box = $("months"); box.replaceChildren();
+    for (let m = 0; m < 12; m++) {
+      const from = iso(viewY,m,1), to = iso(viewY,m,new Date(Date.UTC(viewY,m+1,0)).getUTCDate());
+      const n = new Set(leaves.filter(l => active(l) && l.start <= to && l.end >= from).map(l => l.name)).size;
+      const locked = viewY === FIRST_Y && m < FIRST_M;
+      const b = el("button",{type:"button", class: n ? "has" : "", disabled: locked, "aria-current": String(m === viewM),
+        title: locked ? "Before 1 September 2026" : `${MONTHS[m]} ${viewY}: ${n} ${n === 1 ? "person" : "people"} away`,
+        onclick:() => { viewM = m; render(); }}, MONTHS[m].slice(0,3), el("b",{}, locked ? "–" : String(n)));
+      box.append(b);
+    }
+  }
+
+  function renderCal(){
+    $("monthTitle").textContent = `${MONTHS[viewM]} ${viewY}`;
+    $("prev").disabled = viewY === FIRST_Y && viewM <= FIRST_M;
+    $("next").disabled = viewY === LAST_Y && viewM >= 11;
+    const cal = $("cal"); cal.replaceChildren();
+    for (const d of ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]) cal.append(el("div",{class:"dow"}, d));
+    const first = new Date(Date.UTC(viewY, viewM, 1));
+    const lead = (first.getUTCDay() + 6) % 7;
+    const days = new Date(Date.UTC(viewY, viewM+1, 0)).getUTCDate();
+    for (let i = 0; i < lead; i++) cal.append(el("div",{class:"day pad","aria-hidden":"true"}));
+    for (let d = 1; d <= days; d++) {
+      const s = iso(viewY, viewM, d);
+      const locked = s < START;
+      const out = locked ? [] : onDay(s);
+      const cls = ["day", isWeekend(s) && "we", s === TODAY && "is-today", locked && "locked"].filter(Boolean).join(" ");
+      const cell = el("button",{type:"button", class:cls, disabled: locked,
+        "aria-label": `${fmt(s)}: ${out.length ? out.map(l => l.name).join(", ") + " away" : "nobody away"}. Start a request on this day.`,
+        onclick:() => pickDay(s)},
+        el("span",{class:"dnum"}, el("span",{}, String(d)), out.length ? el("span",{class:"hint"}, String(out.length)) : null));
+      const MAX = 3;
+      out.slice(0, MAX).forEach(l => cell.append(el("span",{class:"bar" + (l.status === "pending" ? " pending" : ""), style:`--c:${typeOf(l.type).c}`, title:`${l.name} · ${typeOf(l.type).label}${l.status === "pending" ? " (pending)" : ""}`}, l.name + (l.halfDay ? " ½" : ""))));
+      if (out.length > MAX) cell.append(el("span",{class:"more"}, `+${out.length - MAX} more`));
+      cal.append(cell);
+    }
+    const tail = (7 - (lead + days) % 7) % 7;
+    for (let i = 0; i < tail; i++) cal.append(el("div",{class:"day pad","aria-hidden":"true"}));
+  }
+
+  function renderLegend(){
+    const lg = $("legend");
+    for (const t of Object.values(TYPES)) lg.append(el("span",{}, el("span",{class:"dot",style:`--c:${t.c}`}), t.label));
+    lg.append(el("span",{}, el("span",{class:"sw"}), "Dashed = pending"));
+  }
+
+  function renderList(){
+    const fp = $("filterPerson"), cur = fp.value;
+    fp.replaceChildren(el("option",{value:""},"Everyone"), ...people().map(p => el("option",{value:p}, p)));
+    fp.value = people().includes(cur) ? cur : "";
+    const fs = $("filterStatus").value, up = $("filterUpcoming").checked;
+    const rows = leaves.filter(l => (!fp.value || l.name === fp.value) && (!fs || l.status === fs) && (!up || l.end >= TODAY))
+                       .sort((a,b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+    const pendingN = leaves.filter(l => l.status === "pending").length;
+    $("listCount").textContent = `${rows.length} shown · ${leaves.length} total${pendingN ? ` · ${pendingN} waiting for approval` : ""}`;
+    const tb = $("rows"); tb.replaceChildren();
+    if (!rows.length) {
+      tb.append(el("tr",{}, el("td",{colspan:"6",class:"empty"}, leaves.length ? "No requests match these filters." : "No leave booked yet. Submit a request or upload a schedule to fill the calendar.")));
+      return;
+    }
+    for (const l of rows) {
+      const t = typeOf(l.type);
+      const mine = me.id && l.createdBy === me.id;
+      const acts = el("div",{class:"actions"});
+      if (canApprove && l.status !== "approved") acts.append(el("button",{type:"button",class:"btn small ok",onclick:() => setStatus(l,"approved")},"Approve"));
+      if (canApprove && l.status !== "declined") acts.append(el("button",{type:"button",class:"btn small bad",onclick:() => setStatus(l,"declined")},"Decline"));
+      if (canApprove || mine) acts.append(confirmBtn(mine && !canApprove ? "Cancel" : "Delete", () => remove(l)));
+      tb.append(el("tr",{},
+        el("td",{}, el("b",{}, l.name), l.note ? el("div",{class:"note"}, l.note) : null),
+        el("td",{}, el("span",{class:"chip"}, el("span",{class:"dot",style:`--c:${t.c}`}), t.label)),
+        el("td",{class:"mono",style:"font-size:13px;white-space:nowrap"}, fmtRange(l)),
+        el("td",{class:"num"}, fmtNum(workDays(l))),
+        el("td",{}, el("span",{class:"st " + (l.status || "pending")}, (l.status || "pending").replace(/^./, c => c.toUpperCase()))),
+        el("td",{}, acts)));
+    }
+  }
+  function confirmBtn(label, fn){
+    let armed = false, t;
+    const b = el("button",{type:"button",class:"btn small",onclick:() => {
+      if (!armed) { armed = true; b.textContent = "Confirm?"; t = setTimeout(() => { armed = false; b.textContent = label; }, 3000); return; }
+      clearTimeout(t); fn();
+    }}, label);
+    return b;
+  }
+
+  function renderTotals(){
+    $("totYearLbl").textContent = String(viewY);
+    const from = `${viewY}-01-01` < START ? START : `${viewY}-01-01`, to = `${viewY}-12-31`;
+    const keys = ["annual","sick","personal","other"];
+    $("totHead").replaceChildren(el("tr",{}, el("th",{},"Person"), el("th",{class:"num"},"Annual"), el("th",{class:"num"},"Sick"), el("th",{class:"num"},"Personal"), el("th",{class:"num"},"Other"), el("th",{class:"num"},"Total")));
+    const tb = $("totRows"); tb.replaceChildren();
+    const ps = people();
+    let any = false;
+    for (const p of ps) {
+      const mine = leaves.filter(l => l.name === p && l.status === "approved" && l.type !== "wfh");
+      const by = {annual:0,sick:0,personal:0,other:0};
+      for (const l of mine) { const k = keys.includes(l.type) ? l.type : "other"; by[k] += daysInRange(l, from, to); }
+      const tot = by.annual + by.sick + by.personal + by.other;
+      if (!tot) continue; any = true;
+      tb.append(el("tr",{}, el("td",{}, p), ...keys.map(k => el("td",{class:"num"}, by[k] ? fmtNum(by[k]) : "–")), el("td",{class:"num"}, el("b",{}, fmtNum(tot)))));
+    }
+    if (!any) tb.append(el("tr",{}, el("td",{colspan:"6",class:"empty"}, `No approved leave in ${viewY} yet.`)));
+  }
+
+  function renderNames(){ $("nameList").replaceChildren(...people().map(p => el("option",{value:p}))); }
+
+  /* ---------- form ---------- */
+  const fStart = $("fStart"), fEnd = $("fEnd");
+  for (const i of [fStart, fEnd]) { i.min = START; i.max = END; }
+  $("fType").replaceChildren(...Object.entries(TYPES).map(([k,t]) => el("option",{value:k}, t.label)));
+  function pickDay(s){
+    fStart.value = s; if (!fEnd.value || fEnd.value < s) fEnd.value = s;
+    updateCalc();
+    if (window.matchMedia("(max-width:920px)").matches) $("reqForm").scrollIntoView({behavior:"smooth", block:"start"});
+    ($("fName").value ? fEnd : $("fName")).focus({preventScroll:true});
+  }
+  function draft(){
+    const half = $("fHalf").checked;
+    return {name:$("fName").value.trim(), type:$("fType").value, start:fStart.value, end: half ? fStart.value : fEnd.value, halfDay: half, note:$("fNote").value.trim()};
+  }
+  function updateCalc(){
+    const d = draft();
+    if ($("fHalf").checked && fStart.value) fEnd.value = fStart.value;
+    fEnd.disabled = $("fHalf").checked;
+    const ok = d.start && d.end && d.end >= d.start;
+    $("fDays").textContent = ok ? fmtNum(workDays(d)) : "–";
+    const clash = $("fClash");
+    if (ok) {
+      const others = leaves.filter(l => active(l) && l.name.toLowerCase() !== d.name.toLowerCase() && l.start <= d.end && l.end >= d.start);
+      const names = [...new Set(others.map(l => l.name))];
+      clash.hidden = !names.length;
+      clash.textContent = names.length ? `Also away in this period: ${names.join(", ")}.` : "";
+    } else clash.hidden = true;
+  }
+  ["input","change"].forEach(ev => $("reqForm").addEventListener(ev, e => { if (e.target.id !== "fNote") updateCalc(); }));
+  function showMsg(id, text, kind){ const m = $(id); m.textContent = text; m.className = "msg " + kind; m.hidden = !text; }
+  $("reqForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = draft();
+    const err = !d.name ? "Add your name so the team knows who is away."
+      : !d.start || !d.end ? "Choose both a start and an end date."
+      : d.start < START ? "Leave can be booked from 1 September 2026 onwards."
+      : d.end > END ? "The schedule runs until 31 December 2028."
+      : d.end < d.start ? "The end date is before the start date."
+      : workDays(d) === 0 ? "Those dates are all on a weekend — no leave needed." : "";
+    if (err) { showMsg("fMsg", err, "err"); return; }
+    if (!canWrite) { showMsg("fMsg", "You can view this schedule but not add to it. Ask the owner for Contributor access.", "err"); return; }
+    $("fSubmit").disabled = true;
+    try {
+      await store.add({...d, status:"pending", createdBy: me.id, createdAt: Date.now()});
+      try { localStorage.setItem("mahima-leave-name", d.name); } catch {}
+      showMsg("fMsg", `Request sent: ${fmtRange(d)}, ${fmtNum(workDays(d))} working day${workDays(d) === 1 ? "" : "s"}.`, "good");
+      $("fNote").value = ""; $("fHalf").checked = false;
+      const [y,m] = parts(d.start); viewY = y; viewM = m-1; render();
+    } catch (x) {
+      showMsg("fMsg", x && x.code === "invalid_argument" ? "You can view this schedule but not add to it. Ask the owner for Contributor access." : "Couldn't save the request. Check your connection and try again.", "err");
+      if (x && x.code === "invalid_argument") canWrite = false;
+    } finally { $("fSubmit").disabled = false; }
+  });
+
+  async function setStatus(l, status){
+    try { await store.update(l.id, {status, decidedBy: me.id, decidedAt: Date.now()}); toast(`${l.name}: ${status}`); }
+    catch { toast("Couldn't update. Only team leads (Editors) can approve."); }
+  }
+  async function remove(l){
+    try { await store.remove(l.id); toast("Request removed"); } catch { toast("Couldn't remove this request."); }
+  }
+
+  /* ---------- CSV upload ---------- */
+  function parseCSV(text){
+    const rows = []; let row = [], f = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i+1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === "," || c === ";") { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i+1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+      else f += c;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(r => r.some(x => x.trim()));
+  }
+  function normDate(s){
+    s = (s || "").trim();
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m) return iso(+m[1], +m[2]-1, +m[3]);
+    m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+    if (m) return iso(+m[3], +m[2]-1, +m[1]);
+    return null;
+  }
+  function normType(s){
+    s = (s || "").toLowerCase().trim();
+    if (TYPES[s]) return s;
+    const hit = Object.entries(TYPES).find(([k,t]) => t.label.toLowerCase().startsWith(s) || s.startsWith(k));
+    if (hit) return hit[0];
+    if (/cuti|vacation|holiday/.test(s)) return "annual";
+    if (/sakit|ill/.test(s)) return "sick";
+    if (/remote|home/.test(s)) return "wfh";
+    return "other";
+  }
+  function prepareImport(text){
+    const rows = parseCSV(text);
+    if (!rows.length) { showMsg("impMsg","That file is empty.","err"); return; }
+    const head = rows[0].map(h => h.trim().toLowerCase());
+    const hasHead = head.includes("name") || head.includes("start");
+    const idx = k => { const i = head.indexOf(k); return hasHead ? i : ["name","type","start","end","note","status"].indexOf(k); };
+    const body = hasHead ? rows.slice(1) : rows;
+    const good = [], bad = [];
+    body.forEach((r, i) => {
+      const line = i + (hasHead ? 2 : 1);
+      const get = k => idx(k) >= 0 ? (r[idx(k)] || "").trim() : "";
+      const name = get("name"), start = normDate(get("start")), end = normDate(get("end") || get("start"));
+      const st = get("status").toLowerCase();
+      if (!name) return bad.push(`row ${line}: no name`);
+      if (!start || !end) return bad.push(`row ${line}: date not recognised`);
+      if (end < start) return bad.push(`row ${line}: end before start`);
+      if (start < START || end > END) return bad.push(`row ${line}: outside Sep 2026 – Dec 2028`);
+      good.push({name, type:normType(get("type")), start, end, halfDay:false, note:get("note"),
+        status: ["pending","approved","declined"].includes(st) ? st : "approved", createdBy: me.id, createdAt: Date.now(), source:"upload"});
+    });
+    pendingImport = good;
+    const txt = `${good.length} leave ${good.length === 1 ? "entry" : "entries"} ready to import.` + (bad.length ? ` Skipped ${bad.length}: ${bad.slice(0,4).join("; ")}${bad.length > 4 ? "…" : ""}.` : "");
+    showMsg("impMsg", txt, good.length ? "good" : "err");
+    $("impActions").hidden = !good.length;
+  }
+  function readFile(file){
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => prepareImport(String(r.result || ""));
+    r.onerror = () => showMsg("impMsg","Couldn't read that file.","err");
+    r.readAsText(file);
+  }
+  $("csvFile").addEventListener("change", e => { readFile(e.target.files[0]); e.target.value = ""; });
+  const drop = $("drop");
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); readFile(e.dataTransfer.files[0]); });
+  $("impCancel").addEventListener("click", () => { pendingImport = null; $("impActions").hidden = true; showMsg("impMsg","",""); });
+  $("impGo").addEventListener("click", async () => {
+    if (!pendingImport) return;
+    const list = pendingImport; pendingImport = null;
+    $("impGo").disabled = true; let done = 0;
+    try {
+      if (store.mode === "local") { for (const l of list) leaves.push({id:"l" + Date.now().toString(36) + (done++) + Math.random().toString(36).slice(2,5), ...l}); store.saveLocal(); done = list.length; }
+      else for (const l of list) { await store.col.add(l); done++; showMsg("impMsg", `Importing… ${done} of ${list.length}`, "good"); }
+      showMsg("impMsg", `Imported ${done} leave ${done === 1 ? "entry" : "entries"}.`, "good");
+    } catch (x) {
+      showMsg("impMsg", `Imported ${done} of ${list.length}. ${x && x.code === "invalid_argument" ? "You need Contributor access to add leave." : "The rest failed — try the file again."}`, "err");
+    } finally { $("impGo").disabled = false; $("impActions").hidden = true; }
+  });
+  async function copyText(text, okMsg, fallbackEl){
+    try { await navigator.clipboard.writeText(text); toast(okMsg); }
+    catch { if (fallbackEl) { const s = window.getSelection(), r = document.createRange(); r.selectNodeContents(fallbackEl); s.removeAllRanges(); s.addRange(r); } toast("Copy blocked — text selected, press Ctrl+C"); }
+  }
+  $("copyTpl").addEventListener("click", () => copyText($("tpl").textContent, "Template copied", $("tpl")));
+  $("copyCsv").addEventListener("click", () => {
+    const esc = v => /[",\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
+    const lines = ["name,type,start,end,half_day,working_days,note,status",
+      ...[...leaves].sort((a,b) => a.start.localeCompare(b.start)).map(l => [l.name, l.type, l.start, l.end, l.halfDay ? "yes" : "no", fmtNum(workDays(l)), l.note || "", l.status].map(x => esc(String(x))).join(","))];
+    copyText(lines.join("\n"), `Copied ${leaves.length} rows — paste into a spreadsheet`);
+  });
+
+  /* ---------- nav ---------- */
+  function shift(n){
+    let m = viewM + n, y = viewY;
+    if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; }
+    if (y < FIRST_Y || (y === FIRST_Y && m < FIRST_M) || y > LAST_Y) return;
+    viewY = y; viewM = m; render();
+  }
+  $("prev").addEventListener("click", () => shift(-1));
+  $("next").addEventListener("click", () => shift(1));
+  ["filterPerson","filterStatus","filterUpcoming"].forEach(id => $(id).addEventListener("change", renderList));
+
+  /* ---------- boot ---------- */
+  renderLegend();
+  try { const n = localStorage.getItem("mahima-leave-name"); if (n) $("fName").value = n; } catch {}
+  render();
+  store.init().then(() => { if (!$("fName").value && me.name) $("fName").value = me.name; })
+    .catch(err => { console.warn(err); setConn("local","Offline"); });
+})();
+</script>
