@@ -1,0 +1,802 @@
+<title>Mahima Staff Roster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --surface-2:#eaeeec; --line:#d5dcd9; --line-strong:#b6c1bd;
+  --ink:#16211e; --ink-2:#4a5a55; --ink-3:#7a8a85;
+  --court:#0f5e4f; --court-ink:#ffffff; --ball:#d3e04a; --focus:#1b7fd1;
+  --ok:#2f7d3a; --warn:#b26a00; --bad:#b3261e; --ok-bg:#e3f2e5; --warn-bg:#fdf0d8; --bad-bg:#fbe3e1;
+  /* shift chips */
+  --c-m:#fff1b8; --c-m-ink:#6b5400;
+  --c-m2:#ffe0a8; --c-m2-ink:#6e4300;
+  --c-m3:#ffd2c2; --c-m3-ink:#7a2e12;
+  --c-md:#f9c9d9; --c-md-ink:#7a1e45;
+  --c-mod:#c9ece4; --c-mod-ink:#0d4d40;
+  --c-a:#dcd6fb; --c-a-ink:#3b2a8f;
+  --c-n:#2b3350; --c-n-ink:#e6e9ff;
+  --c-off:#e6e9e8; --c-off-ink:#5d6b67;
+  --c-eo:#c6ecc9; --c-eo-ink:#1d5a26;
+  --c-ph:#ffc9c4; --c-ph-ink:#8a1c14;
+  --c-al:#bfe0ff; --c-al-ink:#0c4a80;
+  --c-sick:#f3d0ef; --c-sick-ink:#6d1a66;
+  --c-dc:#1f1f1f; --c-dc-ink:#ffd1cc;
+  --c-t:#f4f7f6; --c-t-ink:#27403a;
+  --short:#2c7be5;
+  --weekend:#f7f9f8; --today:#fdfbe6;
+  --shadow:0 10px 30px rgba(15,40,34,.18);
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0f1513; --surface:#161e1b; --surface-2:#1d2724; --line:#2a3632; --line-strong:#3b4a45;
+  --ink:#e7eeeb; --ink-2:#aebbb6; --ink-3:#7e8d88;
+  --court:#3fb49b; --court-ink:#07231d; --ball:#d9e65a; --focus:#6cb6ff;
+  --ok:#7fd08a; --warn:#f0b454; --bad:#ff8a80; --ok-bg:#16301b; --warn-bg:#35270e; --bad-bg:#3a1714;
+  --c-m:#4a3f0c; --c-m-ink:#ffe98a; --c-m2:#4d330b; --c-m2-ink:#ffd08a; --c-m3:#4f2517; --c-m3-ink:#ffc0a8;
+  --c-md:#4c1b30; --c-md-ink:#ffbfd6; --c-mod:#123e35; --c-mod-ink:#a8eadb; --c-a:#2c2656; --c-a-ink:#d3cbff;
+  --c-n:#0a0d1c; --c-n-ink:#b7c0ff; --c-off:#242d2a; --c-off-ink:#94a39e; --c-eo:#173a1d; --c-eo-ink:#a6e8ae;
+  --c-ph:#4a1813; --c-ph-ink:#ffb4ab; --c-al:#0e3354; --c-al-ink:#a9d6ff; --c-sick:#3f1639; --c-sick-ink:#f5b8ec;
+  --c-dc:#000; --c-dc-ink:#ff9d92; --c-t:#1f2a27; --c-t-ink:#cfe0da; --short:#6cb6ff;
+  --weekend:#131b18; --today:#23260f; --shadow:0 10px 30px rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0f1513; --surface:#161e1b; --surface-2:#1d2724; --line:#2a3632; --line-strong:#3b4a45;
+  --ink:#e7eeeb; --ink-2:#aebbb6; --ink-3:#7e8d88;
+  --court:#3fb49b; --court-ink:#07231d; --ball:#d9e65a; --focus:#6cb6ff;
+  --ok:#7fd08a; --warn:#f0b454; --bad:#ff8a80; --ok-bg:#16301b; --warn-bg:#35270e; --bad-bg:#3a1714;
+  --c-m:#4a3f0c; --c-m-ink:#ffe98a; --c-m2:#4d330b; --c-m2-ink:#ffd08a; --c-m3:#4f2517; --c-m3-ink:#ffc0a8;
+  --c-md:#4c1b30; --c-md-ink:#ffbfd6; --c-mod:#123e35; --c-mod-ink:#a8eadb; --c-a:#2c2656; --c-a-ink:#d3cbff;
+  --c-n:#0a0d1c; --c-n-ink:#b7c0ff; --c-off:#242d2a; --c-off-ink:#94a39e; --c-eo:#173a1d; --c-eo-ink:#a6e8ae;
+  --c-ph:#4a1813; --c-ph-ink:#ffb4ab; --c-al:#0e3354; --c-al-ink:#a9d6ff; --c-sick:#3f1639; --c-sick-ink:#f5b8ec;
+  --c-dc:#000; --c-dc-ink:#ff9d92; --c-t:#1f2a27; --c-t-ink:#cfe0da; --short:#6cb6ff;
+  --weekend:#131b18; --today:#23260f; --shadow:0 10px 30px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--body);padding-inline:16px;padding-block:0 48px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1320px;margin-inline:auto}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding-block:20px 14px;border-bottom:2px solid var(--ink)}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:40px;height:40px;border-radius:50%;background:var(--ball);position:relative;flex:none;overflow:hidden}
+.mark::before,.mark::after{content:"";position:absolute;inset:-6px;border:2.5px solid #fff;border-radius:50%}
+.mark::before{transform:translateX(-58%)} .mark::after{transform:translateX(58%)}
+h1{font:700 30px/1 var(--display);letter-spacing:.01em;margin:0;text-transform:uppercase;text-wrap:balance}
+.sub{color:var(--ink-2);font-size:13px;margin-top:3px}
+.sync{font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
+.dot.live{background:var(--ok)} .dot.off{background:var(--bad)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;padding-block:12px 0;margin-bottom:16px;border-bottom:1px solid var(--line)}
+nav.tabs button{border:0;background:none;padding:8px 14px 10px;font:600 17px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--court)}
+nav.tabs .badge{display:inline-block;min-width:18px;padding:1px 5px;border-radius:9px;background:var(--bad);color:#fff;font:600 11px/16px var(--body);letter-spacing:0;margin-left:4px;vertical-align:2px}
+
+.banner{padding:10px 14px;border-radius:6px;background:var(--warn-bg);color:var(--warn);font-size:13px;margin-bottom:14px}
+
+/* controls */
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:12px}
+.bar .grow{flex:1 1 auto}
+.btn{border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:500;font-size:13px;display:inline-flex;align-items:center;gap:6px;min-height:34px}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--court);border-color:var(--court);color:var(--court-ink)}
+.btn.danger{color:var(--bad)}
+.btn.small{min-height:28px;padding:3px 9px;font-size:12px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.icon{width:34px;padding:0;justify-content:center;font-size:16px}
+.field{border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:6px 10px;min-height:34px;font-size:13px}
+.weeklabel{font:600 22px/1 var(--display);letter-spacing:.02em;min-width:0}
+.weeklabel small{font:500 13px var(--body);color:var(--ink-3);letter-spacing:0;margin-left:6px}
+
+/* brush */
+.brush{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:8px;border:1px dashed var(--line-strong);border-radius:8px;margin-bottom:12px;background:var(--surface)}
+.brush .lbl{font:600 13px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-right:4px}
+.brush button{border:2px solid transparent;border-radius:6px;cursor:pointer;padding:0}
+.brush button[aria-pressed="true"]{border-color:var(--ink)}
+.brush .hint{font-size:12px;color:var(--ink-3);margin-left:auto}
+
+/* roster grid */
+.gridwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table.roster{border-collapse:separate;border-spacing:0;width:100%;min-width:880px;font-variant-numeric:tabular-nums}
+.roster th,.roster td{border-bottom:1px solid var(--line);padding:0}
+.roster thead th{position:sticky;top:0;background:var(--surface-2);z-index:2;font-weight:500;text-align:center;padding:8px 4px;vertical-align:bottom}
+.roster thead .dname{font:600 15px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.roster thead .ddate{font-size:12px;color:var(--ink-3)}
+.roster thead th.today{background:var(--today);box-shadow:inset 0 3px 0 var(--ball)}
+.hol{display:block;margin-top:3px;font-size:10.5px;line-height:1.2;color:var(--c-ph-ink);background:var(--c-ph);border-radius:3px;padding:1px 4px}
+.roster .namecol{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;width:220px;min-width:180px;padding:6px 10px;border-right:1px solid var(--line)}
+.roster thead .namecol{z-index:3;background:var(--surface-2)}
+.who{display:flex;flex-direction:column;gap:1px}
+.who b{font-weight:600}
+.who span{font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.tags{display:flex;gap:4px;margin-top:2px}
+.tag{font-size:10.5px;font-weight:600;padding:0 5px;border-radius:3px;background:var(--surface-2);color:var(--ink-2);letter-spacing:.03em}
+.tag.lock{background:var(--c-ph);color:var(--c-ph-ink)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.roster td.cell{text-align:center;padding:3px;min-width:78px}
+.roster td.wkend{background:var(--weekend)}
+.roster td.today{background:var(--today)}
+.roster td.rem{padding:4px 8px;font-size:12px;color:var(--ink-2);min-width:120px;text-align:left}
+tr.dept th{background:var(--ink);color:var(--bg);text-align:left;padding:5px 10px;font:600 14px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;position:sticky;left:0}
+tr.dept th .cnt{font:500 11px var(--body);letter-spacing:0;opacity:.7;margin-left:6px;text-transform:none}
+tr.cover td{background:var(--surface-2);font-size:11.5px;color:var(--ink-2);text-align:center;padding:4px}
+tr.cover td.namecol{background:var(--surface-2);font-weight:600;color:var(--ink-2)}
+
+.chip{display:inline-flex;align-items:center;justify-content:center;gap:2px;min-width:52px;height:30px;padding:0 6px;border-radius:5px;font:600 14px/1 var(--mono);letter-spacing:.02em;position:relative;white-space:nowrap;background:var(--c-t);color:var(--c-t-ink)}
+.chip.empty{background:transparent;border:1px dashed var(--line);color:var(--ink-3);font-weight:400}
+.cellbtn{border:0;background:none;padding:0;cursor:pointer;width:100%;display:flex;justify-content:center;border-radius:6px}
+.cellbtn:hover .chip{filter:brightness(.95);box-shadow:0 0 0 2px var(--line-strong)}
+.chip.short::after{content:"";position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--short);box-shadow:0 0 0 1.5px var(--surface)}
+.chip.short{box-shadow:inset 0 -3px 0 var(--short)}
+.k-M{background:var(--c-m);color:var(--c-m-ink)} .k-M2{background:var(--c-m2);color:var(--c-m2-ink)}
+.k-M3{background:var(--c-m3);color:var(--c-m3-ink)} .k-MD{background:var(--c-md);color:var(--c-md-ink)}
+.k-MOD{background:var(--c-mod);color:var(--c-mod-ink)} .k-A{background:var(--c-a);color:var(--c-a-ink)}
+.k-N{background:var(--c-n);color:var(--c-n-ink)} .k-OFF{background:var(--c-off);color:var(--c-off-ink);font-weight:500}
+.k-EO{background:var(--c-eo);color:var(--c-eo-ink)} .k-PH{background:var(--c-ph);color:var(--c-ph-ink)}
+.k-AL{background:var(--c-al);color:var(--c-al-ink)} .k-SICK{background:var(--c-sick);color:var(--c-sick-ink)}
+.k-DC{background:var(--c-dc);color:var(--c-dc-ink)} .k-X{background:var(--ball);color:#27300a}
+
+/* legend */
+.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 16px;margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.legend h3{grid-column:1/-1;margin:0 0 2px;font:600 16px var(--display);letter-spacing:.08em;text-transform:uppercase}
+.legend div{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.legend div span{color:var(--ink-3)}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.stat .n{font:700 30px/1.05 var(--display)}
+.stat .l{font-size:12px;color:var(--ink-3)}
+
+/* leave table */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table.data{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;min-width:860px}
+.data th{background:var(--surface-2);text-align:left;font:600 13px/1.2 var(--display);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);padding:9px 10px;white-space:nowrap}
+.data td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:middle}
+.data tr.click{cursor:pointer} .data tr.click:hover td{background:var(--surface-2)}
+.num{text-align:right}
+.meter{display:flex;align-items:center;gap:8px;min-width:130px}
+.meter .track{flex:1;height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden;min-width:60px}
+.meter .fill{height:100%;border-radius:4px}
+.meter b{font-weight:600;min-width:42px;text-align:right;font-size:13px}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)} .pill.mute{background:var(--surface-2);color:var(--ink-3)}
+.neg{color:var(--bad);font-weight:600}
+
+.cols{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+.panel h2{margin:0 0 10px;font:700 20px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.form{display:grid;gap:10px}
+.form label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.form .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{font-size:12px;color:var(--ink-3)}
+.msg{font-size:12.5px;padding:8px 10px;border-radius:6px}
+.msg.bad{background:var(--bad-bg);color:var(--bad)} .msg.ok{background:var(--ok-bg);color:var(--ok)} .msg.warn{background:var(--warn-bg);color:var(--warn)}
+.list{display:grid;gap:8px}
+.req{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.req .t{font-weight:600}
+.req .d{font-size:12.5px;color:var(--ink-2)}
+.req .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+h2.sec{font:700 20px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:22px 0 10px}
+
+/* holidays */
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.hcard{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.hcard.past{opacity:.55}
+.cal{text-align:center;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.cal .m{background:var(--c-ph);color:var(--c-ph-ink);font:600 12px/1.6 var(--display);letter-spacing:.1em;text-transform:uppercase}
+.cal .d{font:700 26px/1.2 var(--display)}
+.hcard .t{font-weight:600}
+.hcard .d2{font-size:12px;color:var(--ink-3)}
+
+/* dialog */
+dialog{border:0;border-radius:12px;padding:0;background:var(--surface);color:var(--ink);box-shadow:var(--shadow);width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 40px)}
+dialog::backdrop{background:rgba(10,20,18,.45)}
+.dlg{padding:18px;display:grid;gap:12px}
+.dlg h3{margin:0;font:700 22px/1.1 var(--display);letter-spacing:.03em;text-transform:uppercase}
+.dlg .meta{font-size:12.5px;color:var(--ink-3);margin-top:-8px}
+.codes{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
+.codes button{border:2px solid transparent;border-radius:7px;padding:0;background:none;cursor:pointer}
+.codes button .chip{width:100%;height:auto;min-height:44px;flex-direction:column;gap:2px;padding:4px}
+.codes button .chip small{font:500 9.5px var(--body);opacity:.85}
+.codes button[aria-pressed="true"]{border-color:var(--ink)}
+.codes button[disabled]{opacity:.3;cursor:not-allowed}
+.dlg .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.check{display:flex;gap:8px;align-items:center;font-size:13px}
+.dlg .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.empty-state{padding:34px 16px;text-align:center;color:var(--ink-3);border:1px dashed var(--line-strong);border-radius:8px;background:var(--surface)}
+.empty-state b{display:block;color:var(--ink);font:600 20px var(--display);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);z-index:50;max-width:calc(100vw - 32px)}
+.staffgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.scard{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);display:grid;gap:6px;cursor:pointer;text-align:left}
+.scard:hover{border-color:var(--ink-3)}
+.scard .n{font-weight:600;font-size:15px}
+.scard .r{font-size:12.5px;color:var(--ink-2)}
+.scard .f{display:flex;gap:6px;flex-wrap:wrap}
+.hist{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto}
+.hist .chip{min-width:0;height:auto;padding:4px 7px;font-size:11.5px;flex-direction:column;gap:1px}
+@media (max-width:600px){h1{font-size:24px}.brush .hint{display:none}.roster .namecol{width:150px;min-width:140px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <h1>Mahima Staff Roster</h1>
+        <div class="sub">Mahima Tennis, Padel &amp; Gym · shifts, days off, leave &amp; absence</div>
+      </div>
+    </div>
+    <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+  </header>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="roster" aria-selected="true">Weekly roster</button>
+    <button role="tab" data-tab="leave" aria-selected="false">Leave balances</button>
+    <button role="tab" data-tab="requests" aria-selected="false">Leave requests <span class="badge" id="reqBadge" hidden>0</span></button>
+    <button role="tab" data-tab="holidays" aria-selected="false">Public holidays</button>
+    <button role="tab" data-tab="staff" aria-selected="false">Staff</button>
+  </nav>
+
+  <div class="banner" id="offline" hidden>Live data isn't available in this view. Open the roster from its claude.ai link to see and edit the shared schedule.</div>
+
+  <!-- ROSTER -->
+  <section id="tab-roster">
+    <div class="bar">
+      <button class="btn icon" id="prevWk" aria-label="Previous week">‹</button>
+      <button class="btn icon" id="nextWk" aria-label="Next week">›</button>
+      <button class="btn" id="thisWk">This week</button>
+      <div class="weeklabel" id="wkLabel"></div>
+      <div class="grow"></div>
+      <select class="field" id="deptFilter" aria-label="Department"><option value="">All departments</option></select>
+      <input class="field" id="search" type="search" placeholder="Find staff…" aria-label="Find staff">
+      <button class="btn" id="copyPrev">Copy last week</button>
+      <button class="btn" id="exportWk">Export CSV</button>
+    </div>
+    <div class="brush" id="brush"></div>
+    <div id="rosterBody"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <!-- LEAVE -->
+  <section id="tab-leave" hidden>
+    <div class="stats" id="leaveStats"></div>
+    <div class="bar">
+      <select class="field" id="leaveDept" aria-label="Department"><option value="">All departments</option></select>
+      <div class="grow"></div>
+      <span class="note">Counts come straight from the roster: every AL, EO, PH, SICK or DC typed in a cell is counted here.</span>
+    </div>
+    <div class="tablewrap"><table class="data" id="leaveTable"></table></div>
+    <p class="note">Rules from the master sheet: staff on contract (SC) get 12 days annual leave + 5 public holidays a year, usable after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
+  </section>
+
+  <!-- REQUESTS -->
+  <section id="tab-requests" hidden>
+    <div class="cols">
+      <div class="panel">
+        <h2>Request leave</h2>
+        <form class="form" id="reqForm">
+          <label>Staff member<select class="field" id="rqStaff" required></select></label>
+          <label>Type
+            <select class="field" id="rqType">
+              <option value="AL">AL · Annual leave</option>
+              <option value="EO">EO · Extra off</option>
+              <option value="PH">PH · Public holiday</option>
+              <option value="SICK">SICK · Sick leave</option>
+              <option value="OFF">OFF · Day off swap</option>
+            </select>
+          </label>
+          <div class="row2">
+            <label>From<input class="field" type="date" id="rqFrom" required></label>
+            <label>To<input class="field" type="date" id="rqTo" required></label>
+          </div>
+          <label>Note<input class="field" id="rqNote" placeholder="Reason, cover arranged…"></label>
+          <div id="rqCheck"></div>
+          <button class="btn primary" type="submit">Submit request</button>
+        </form>
+      </div>
+      <div>
+        <h2 class="sec" style="margin-top:0">Waiting for approval</h2>
+        <div class="list" id="pendingList"></div>
+        <h2 class="sec">Decided</h2>
+        <div class="list" id="doneList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOLIDAYS -->
+  <section id="tab-holidays" hidden>
+    <div id="holBody"></div>
+  </section>
+
+  <!-- STAFF -->
+  <section id="tab-staff" hidden>
+    <div class="bar"><div class="grow note">Click a person to edit their details or see every leave day they've taken.</div><button class="btn primary" id="addStaff">Add staff</button></div>
+    <div id="staffBody"></div>
+  </section>
+</div>
+
+<dialog id="cellDlg"><form method="dialog" class="dlg" id="cellForm"></form></dialog>
+<dialog id="staffDlg"><form method="dialog" class="dlg" id="staffForm"></form></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- constants ---------- */
+const SHIFTS = [
+  {k:"M",   h:"06:30–14:30", d:"Morning", work:true},
+  {k:"M2",  h:"08:00–16:00", d:"Morning 2", work:true},
+  {k:"M3",  h:"12:00–20:00", d:"Mid-day", work:true},
+  {k:"MD",  h:"12:00–20:00", d:"Mid-day kitchen", work:true},
+  {k:"MOD", h:"09:00–17:00", d:"Manager on duty", work:true},
+  {k:"A",   h:"15:00–23:00", d:"Afternoon / evening", work:true},
+  {k:"N",   h:"22:30–06:30", d:"Night security", work:true},
+  {k:"OFF", h:"—", d:"Day off (1 per week)", rest:true},
+  {k:"EO",  h:"—", d:"Extra off · counted", rest:true, leave:true},
+  {k:"PH",  h:"—", d:"Public holiday · counted", rest:true, leave:true},
+  {k:"AL",  h:"—", d:"Annual leave · counted", rest:true, leave:true},
+  {k:"SICK",h:"—", d:"Sick leave", rest:true, absence:true},
+  {k:"DC",  h:"—", d:"Did not come", absence:true},
+  {k:"X",   h:"—", d:"First day of work", work:true},
+];
+const SHIFT = Object.fromEntries(SHIFTS.map(s => [s.k, s]));
+const DEPTS = ["Reception","Housekeeping & Security","F&B","Kitchen","Coaches"];
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* ---------- state ---------- */
+const S = {
+  db:null, downloads:null, live:false,
+  staff:{}, weeks:{}, requests:{}, holidays:[],
+  week: mondayOf(todayISO()), tab:"roster", brush:null, dept:"", q:"",
+  pending:{}, // weekId -> {sid: {cells, short, remark}}
+};
+try { const t = localStorage.getItem("mahima.tab"); if (t) S.tab = t; } catch(e){}
+
+/* ---------- date helpers ---------- */
+function todayISO(){ const d=new Date(); return iso(d); }
+function iso(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function parse(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function addDays(s,n){ const d=parse(s); d.setDate(d.getDate()+n); return iso(d); }
+function mondayOf(s){ const d=parse(s); const w=(d.getDay()+6)%7; d.setDate(d.getDate()-w); return iso(d); }
+function fmt(s){ const d=parse(s); return String(d.getDate()).padStart(2,"0")+" "+MONTHS[d.getMonth()]+" "+d.getFullYear(); }
+function fmtShort(s){ const d=parse(s); return String(d.getDate()).padStart(2,"0")+" "+MONTHS[d.getMonth()]; }
+function isoWeek(s){ const d=parse(s); d.setDate(d.getDate()+3-((d.getDay()+6)%7)); const w1=new Date(d.getFullYear(),0,4); return 1+Math.round(((d-w1)/864e5-3+((w1.getDay()+6)%7))/7); }
+function eligibleFrom(st){ const d=parse(st.start); d.setFullYear(d.getFullYear()+1); return iso(d); }
+function isEligible(st){ return st.contract==="SC" && eligibleFrom(st) <= todayISO(); }
+function daysBetween(a,b){ const out=[]; let c=a; while(c<=b && out.length<120){ out.push(c); c=addDays(c,1);} return out; }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2600); }
+
+/* ---------- code helpers ---------- */
+function chipClass(code){ if(!code) return "chip empty"; return "chip " + (SHIFT[code] ? "k-"+code : ""); }
+function chipHTML(code, short){ return `<span class="${chipClass(code)}${short?" short":""}">${code?esc(code):"·"}</span>`; }
+function isWork(code){ if(!code) return false; const s=SHIFT[code]; return s ? !!s.work : !/^(OFF|L)$/.test(code); }
+function isRest(code){ const s=SHIFT[code]; return !!(s && s.rest); }
+
+/* ---------- data access ---------- */
+function staffList(){
+  return Object.entries(S.staff).map(([id,s])=>({id,...s}))
+    .filter(s=>!s.archived)
+    .sort((a,b)=> (DEPTS.indexOf(a.dept)-DEPTS.indexOf(b.dept)) || ((a.order??99)-(b.order??99)) || a.name.localeCompare(b.name));
+}
+function weekRow(weekId, sid){
+  const w = S.weeks[weekId] || {};
+  const p = S.pending[weekId]?.[sid];
+  return {
+    cells: p?.cells || w.cells?.[sid] || ["","","","","","",""],
+    short: p?.short || w.short?.[sid] || [0,0,0,0,0,0,0],
+    remark: p && "remark" in p ? p.remark : (w.remarks?.[sid] || ""),
+  };
+}
+function codeOn(sid, dateISO){ const wk=mondayOf(dateISO); const i=(parse(dateISO).getDay()+6)%7; return weekRow(wk,sid).cells[i]||""; }
+function holidaysOn(dateISO){ return S.holidays.filter(h=>h.date===dateISO); }
+
+/* leave tallies from the whole roster */
+function tallies(){
+  const t={};
+  for(const s of staffList()) t[s.id]={AL:0,EO:0,PH:0,SICK:0,DC:0,days:[]};
+  const weekIds = new Set([...Object.keys(S.weeks), ...Object.keys(S.pending)]);
+  for(const wk of weekIds){
+    for(const sid of Object.keys(t)){
+      const r = weekRow(wk,sid);
+      r.cells.forEach((c,i)=>{ if(c in t[sid]){ t[sid][c]++; t[sid].days.push({date:addDays(wk,i),code:c}); } });
+    }
+  }
+  for(const sid in t) t[sid].days.sort((a,b)=>a.date.localeCompare(b.date));
+  return t;
+}
+
+/* ---------- writes (coalesced per week doc) ---------- */
+const flushTimers = {}; const chains = {};
+function queueRow(weekId, sid, patch){
+  const cur = weekRow(weekId, sid);
+  S.pending[weekId] = S.pending[weekId] || {};
+  S.pending[weekId][sid] = {cells:[...cur.cells], short:[...cur.short], remark:cur.remark, ...patch};
+  clearTimeout(flushTimers[weekId]);
+  flushTimers[weekId] = setTimeout(()=>flush(weekId), 450);
+}
+function flush(weekId){
+  const rows = S.pending[weekId]; if(!rows) return;
+  chains[weekId] = (chains[weekId]||Promise.resolve()).then(async ()=>{
+    if(!S.db){ return; }
+    const exists = !!S.weeks[weekId];
+    const body = {cells:{}, short:{}, remarks:{}, updatedAt:new Date().toISOString()};
+    for(const [sid,r] of Object.entries(rows)){ body.cells[sid]=r.cells; body.short[sid]=r.short; body.remarks[sid]=r.remark||""; }
+    const ref = S.db.doc("weeks/"+weekId);
+    try{
+      if(exists) await ref.update(body);
+      else {
+        const base = {weekStart:weekId, cells:{}, short:{}, remarks:{}};
+        await ref.set({...base, ...body});
+      }
+      if(S.pending[weekId]===rows) delete S.pending[weekId];
+      else for(const sid of Object.keys(rows)) if(S.pending[weekId]?.[sid]===rows[sid]) delete S.pending[weekId][sid];
+    }catch(e){ handleWriteError(e); }
+  });
+}
+function handleWriteError(e){
+  const code = e && e.code;
+  if(code==="invalid_argument") toast("You can view this roster but not change it. Ask the owner for Contributor access.");
+  else if(code==="quota_exceeded") toast("The roster storage is full. Delete old leave requests to make room.");
+  else toast("Couldn't save just now. Check your connection and try again.");
+}
+
+/* ---------- rendering: roster ---------- */
+function renderBrush(){
+  const b = $("#brush");
+  const items = ["M","M2","M3","MD","MOD","A","N","OFF","EO","PH","AL","SICK","DC",""];
+  b.innerHTML = `<span class="lbl">Paint</span>` + items.map(k=>`<button type="button" data-brush="${k}" aria-pressed="${S.brush===k}" title="${k?esc(k+" · "+SHIFT[k].d):"Clear cell"}">${k?chipHTML(k):'<span class="chip empty">clear</span>'}</button>`).join("")
+    + `<button type="button" class="btn small" data-brush="__none" ${S.brush===null?"hidden":""}>Stop painting</button>`
+    + `<span class="hint">${S.brush===null?"Pick a code, then click cells to fill them fast. Or click any cell to edit it.":"Painting <b>"+esc(S.brush||"clear")+"</b> — click cells to apply."}</span>`;
+}
+function renderRoster(){
+  const wk = S.week, days = DAYS.map((_,i)=>addDays(wk,i)), today = todayISO();
+  $("#wkLabel").innerHTML = `Week ${isoWeek(wk)}<small>${fmtShort(days[0])} – ${fmt(days[6])}</small>`;
+  const q = S.q.trim().toLowerCase();
+  const list = staffList().filter(s=>(!S.dept||s.dept===S.dept) && (!q || s.name.toLowerCase().includes(q) || (s.title||"").toLowerCase().includes(q)));
+  if(!Object.keys(S.staff).length){
+    $("#rosterBody").innerHTML = `<div class="empty-state"><b>${S.live?"Loading roster…":"No roster data here"}</b>${S.live?"":"This view can't reach the shared roster."}</div>`;
+    return;
+  }
+  const head = `<thead><tr><th class="namecol">Staff</th>${days.map((d,i)=>{
+      const hs = holidaysOn(d);
+      return `<th class="${d===today?"today":""}"><div class="dname">${DAYS[i]}</div><div class="ddate">${fmtShort(d)}</div>${hs.map(h=>`<span class="hol" title="${esc(h.name+" · "+h.for)}">${esc(h.name)}</span>`).join("")}</th>`;}).join("")}<th>Remarks</th></tr></thead>`;
+  let body = "";
+  const groups = DEPTS.concat([...new Set(list.map(s=>s.dept))].filter(d=>!DEPTS.includes(d)));
+  for(const dept of groups){
+    const ppl = list.filter(s=>s.dept===dept); if(!ppl.length) continue;
+    body += `<tr class="dept"><th colspan="9">${esc(dept)}<span class="cnt">${ppl.length} staff</span></th></tr>`;
+    for(const s of ppl){
+      const r = weekRow(wk, s.id);
+      const filled = r.cells.filter(Boolean).length;
+      const noRest = filled===7 && !r.cells.some(isRest);
+      const started = s.start <= days[6];
+      const tags = [`<span class="tag">${esc(s.contract)}</span>`];
+      if(s.contract==="SC" && !isEligible(s)) tags.push(`<span class="tag lock" title="Leave unlocks ${fmt(eligibleFrom(s))}">Leave from ${fmtShort(eligibleFrom(s))} ${eligibleFrom(s).slice(0,4)}</span>`);
+      if(noRest) tags.push(`<span class="tag warn" title="Everyone needs at least 1 day off a week">No day off</span>`);
+      body += `<tr><th class="namecol" scope="row"><div class="who"><b>${esc(s.name)}</b><span>${esc(s.title||"")}</span><div class="tags">${tags.join("")}</div></div></th>`;
+      days.forEach((d,i)=>{
+        const code=r.cells[i]||"", sh=!!r.short[i];
+        const cls = ["cell", i>=5?"wkend":"", d===today?"today":""].join(" ");
+        const label = `${s.name}, ${DAYS[i]} ${fmtShort(d)}: ${code||"empty"}${sh?", short time":""}`;
+        body += `<td class="${cls}"><button type="button" class="cellbtn" data-sid="${esc(s.id)}" data-day="${i}" aria-label="${esc(label)}" ${!started&&!code?'title="Before start date"':""}>${chipHTML(code, sh)}</button></td>`;
+      });
+      body += `<td class="rem">${esc(r.remark)}</td></tr>`;
+    }
+    // coverage row
+    body += `<tr class="cover"><td class="namecol">On duty</td>${days.map((d,i)=>{ const n=ppl.filter(s=>isWork(weekRow(wk,s.id).cells[i])).length; return `<td>${n} / ${ppl.length}</td>`;}).join("")}<td></td></tr>`;
+  }
+  $("#rosterBody").innerHTML = `<div class="gridwrap"><table class="roster">${head}<tbody>${body}</tbody></table></div>`;
+}
+function renderLegend(){
+  $("#legend").innerHTML = `<h3>Shift codes</h3>` + SHIFTS.map(s=>`<div>${chipHTML(s.k)}<p style="margin:0">${esc(s.d)}<br><span>${esc(s.h)}</span></p></div>`).join("")
+   + `<div>${chipHTML("13:00")}<p style="margin:0">Custom start time<br><span>Type any time, e.g. 09:00</span></p></div>`
+   + `<div>${chipHTML("M",true)}<p style="margin:0">Short time<br><span>Blue mark = shorter shift than normal</span></p></div>`;
+}
+
+/* ---------- cell editor ---------- */
+let edit=null;
+function openCell(sid, day){
+  const s = S.staff[sid]; if(!s) return;
+  const date = addDays(S.week, day), r = weekRow(S.week, sid);
+  edit = {sid, day, date, code:r.cells[day]||"", short:!!r.short[day], remark:r.remark};
+  drawCell();
+  $("#cellDlg").showModal();
+}
+function leaveWarning(sid, code, date){
+  const s = S.staff[sid]; if(!s) return "";
+  if(s.contract==="DW" && ["AL","EO","PH"].includes(code)) return {lvl:"bad", t:`${s.name} is a daily worker: no EO, AL or PH.`};
+  if(s.contract==="SC" && ["AL","PH"].includes(code) && eligibleFrom(s) > date) return {lvl:"warn", t:`${s.name}'s leave unlocks on ${fmt(eligibleFrom(s))} (1 year of service).`};
+  if(code==="AL"||code==="PH"||code==="EO"){
+    const t = tallies()[sid]; const cur = codeOn(sid,date)===code ? 0 : 1;
+    if(code==="AL" && t.AL+cur>12) return {lvl:"warn", t:`This would be AL day ${t.AL+cur} of 12.`};
+    if(code==="PH" && t.PH+cur>5) return {lvl:"warn", t:`This would be PH day ${t.PH+cur} of 5.`};
+    if(code==="EO" && t.EO+cur>(s.eoFwd||0)) return {lvl:"warn", t:`Only ${s.eoFwd||0} EO brought forward; this goes over.`};
+  }
+  return "";
+}
+function drawCell(){
+  const s = S.staff[edit.sid], d = edit.date, hs = holidaysOn(d);
+  const isCustom = edit.code && !SHIFT[edit.code];
+  const w = leaveWarning(edit.sid, edit.code, d);
+  $("#cellForm").innerHTML = `
+    <h3>${esc(s.name)}</h3>
+    <div class="meta">${DAYS[edit.day]} ${fmt(d)} · ${esc(s.title||"")}${hs.length?" · <b>"+hs.map(h=>esc(h.name)).join(", ")+"</b>":""}</div>
+    <div class="codes">${SHIFTS.map(x=>{
+      const dis = s.contract==="DW" && ["AL","EO","PH"].includes(x.k);
+      return `<button type="button" data-code="${x.k}" aria-pressed="${edit.code===x.k}" ${dis?"disabled":""} title="${esc(x.d)}"><span class="${chipClass(x.k)}">${x.k}<small>${esc(x.h==="—"?x.d.split(" ·")[0]:x.h)}</small></span></button>`;}).join("")}
+      <button type="button" data-code="" aria-pressed="${!edit.code}"><span class="chip empty">clear</span></button>
+    </div>
+    <div class="row"><label class="check" for="cTime">Custom start</label><input class="field" id="cTime" type="time" value="${isCustom && /^\d\d:\d\d$/.test(edit.code)?edit.code:""}" style="width:130px"><input class="field" id="cText" placeholder="or any text" value="${isCustom && !/^\d\d:\d\d$/.test(edit.code)?esc(edit.code):""}" style="flex:1;min-width:100px"></div>
+    <label class="check"><input type="checkbox" id="cShort" ${edit.short?"checked":""}> Short time (shorter shift than normal)</label>
+    <label class="form" style="display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--ink-2)">Week remark<input class="field" id="cRemark" value="${esc(edit.remark)}" placeholder="e.g. World Sport Day"></label>
+    ${w?`<div class="msg ${w.lvl}">${esc(w.t)}</div>`:""}
+    <div class="foot"><button class="btn" value="cancel">Cancel</button><button class="btn primary" id="cSave" type="button" ${w&&w.lvl==="bad"?"disabled":""}>Save</button></div>`;
+}
+$("#cellForm").addEventListener("click", e=>{
+  const b = e.target.closest("[data-code]");
+  if(b && !b.disabled){ edit.code=b.dataset.code; $("#cTime") && (edit.short=$("#cShort").checked, edit.remark=$("#cRemark").value); drawCell(); return; }
+  if(e.target.id==="cSave"){
+    const t=$("#cTime").value, tx=$("#cText").value.trim().toUpperCase();
+    if(t) edit.code=t; else if(tx) edit.code=tx;
+    const r = weekRow(S.week, edit.sid);
+    const cells=[...r.cells], short=[...r.short];
+    cells[edit.day]=edit.code; short[edit.day]=$("#cShort").checked?1:0;
+    queueRow(S.week, edit.sid, {cells, short, remark:$("#cRemark").value.trim()});
+    $("#cellDlg").close(); renderAll(); toast("Saved");
+  }
+});
+$("#cellForm").addEventListener("input", e=>{ if(e.target.id==="cTime"&&e.target.value){ $("#cText").value=""; } if(e.target.id==="cText"&&e.target.value){ $("#cTime").value=""; } });
+
+function paint(sid, day){
+  const s=S.staff[sid], code=S.brush, date=addDays(S.week,day);
+  const w = code ? leaveWarning(sid, code, date) : "";
+  if(w && w.lvl==="bad"){ toast(w.t); return; }
+  const r = weekRow(S.week,sid); const cells=[...r.cells]; cells[day]=code;
+  queueRow(S.week, sid, {cells});
+  renderAll();
+  if(w) toast(w.t);
+}
+
+/* ---------- leave balances ---------- */
+function meter(used,total,color){
+  const pct = total? Math.min(100, Math.round(used/total*100)) : 0;
+  return `<div class="meter"><div class="track"><div class="fill" style="width:${pct}%;background:${color}"></div></div><b>${used}/${total}</b></div>`;
+}
+function renderLeave(){
+  const t = tallies(), list = staffList().filter(s=>!$("#leaveDept").value || s.dept===$("#leaveDept").value);
+  const sc = list.filter(s=>s.contract==="SC");
+  const tot = k => list.reduce((n,s)=>n+t[s.id][k],0);
+  $("#leaveStats").innerHTML = [
+    [sc.filter(isEligible).length+" / "+sc.length,"Contract staff with leave unlocked"],
+    [tot("AL"),"AL days taken"],[tot("EO"),"EO days taken"],[tot("PH"),"PH days taken"],[tot("SICK")+tot("DC"),"Sick / did-not-come days"],
+  ].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+  const rows = list.map(s=>{
+    const x=t[s.id];
+    if(s.contract==="DW") return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td><td><span class="pill mute">DW</span></td><td colspan="5" class="note">Daily worker · not eligible for EO, AL or PH</td><td class="num">${x.SICK+x.DC||"—"}</td></tr>`;
+    const el = isEligible(s), eoLeft=(s.eoFwd||0)-x.EO, left=17-x.AL-x.EO-x.PH;
+    return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td>
+      <td>${el?'<span class="pill ok">Unlocked</span>':`<span class="pill warn">From ${fmt(eligibleFrom(s))}</span>`}</td>
+      <td>${meter(x.AL,12,"var(--c-al-ink)")}</td>
+      <td>${meter(x.PH,5,"var(--c-ph-ink)")}<div class="note">${esc(s.phGroup||"")}</div></td>
+      <td class="num">${s.eoFwd||0}</td><td class="num">${x.EO}</td><td class="num ${eoLeft<0?"neg":""}">${eoLeft}</td>
+      <td class="num">${x.SICK+x.DC||"—"}</td>
+      <td class="num"><b class="${left<0?"neg":""}" style="font:700 20px var(--display)">${left}</b></td></tr>`;
+  }).join("");
+  $("#leaveTable").innerHTML = `<thead><tr><th>Staff</th><th>Leave status</th><th>Annual leave (AL)</th><th>Public holiday (PH)</th><th class="num">EO brought fwd</th><th class="num">EO used</th><th class="num">EO left</th><th class="num">Sick / DC</th><th class="num">Left of 17</th></tr></thead><tbody>${rows}</tbody>`;
+}
+
+/* ---------- requests ---------- */
+function reqList(){ return Object.entries(S.requests).map(([id,r])=>({id,...r})).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")); }
+function reqCard(r){
+  const s=S.staff[r.staffId]; const n=daysBetween(r.from,r.to).length;
+  const w = r.status==="pending" ? leaveWarning(r.staffId, r.type, r.from) : "";
+  const pill = r.status==="approved"?'<span class="pill ok">Approved · added to roster</span>':r.status==="rejected"?'<span class="pill bad">Declined</span>':'<span class="pill warn">Pending</span>';
+  return `<div class="req"><div><div class="t">${esc(s?.name||"Unknown")} · ${chipHTML(r.type)} <span class="note">${n} day${n>1?"s":""}</span></div>
+    <div class="d">${fmt(r.from)}${r.to!==r.from?" – "+fmt(r.to):""}${r.note?" · "+esc(r.note):""}</div>
+    ${w?`<div class="d" style="color:var(--${w.lvl==="bad"?"bad":"warn"})">${esc(w.t)}</div>`:""}</div>
+    <div class="acts">${pill}${r.status==="pending"?`<button class="btn small primary" data-approve="${r.id}">Approve</button><button class="btn small" data-reject="${r.id}">Decline</button>`:`<button class="btn small danger" data-delreq="${r.id}">Remove</button>`}</div></div>`;
+}
+function renderRequests(){
+  const all=reqList(), pend=all.filter(r=>r.status==="pending"), done=all.filter(r=>r.status!=="pending").slice(0,40);
+  $("#pendingList").innerHTML = pend.length? pend.map(reqCard).join("") : `<div class="empty-state" style="padding:18px">No requests waiting.</div>`;
+  $("#doneList").innerHTML = done.length? done.map(reqCard).join("") : `<div class="note">Approved and declined requests show here.</div>`;
+  const b=$("#reqBadge"); b.textContent=pend.length; b.hidden=!pend.length;
+  checkReqForm();
+}
+function checkReqForm(){
+  const sid=$("#rqStaff").value, type=$("#rqType").value, from=$("#rqFrom").value, to=$("#rqTo").value||from;
+  let out="";
+  if(sid && from){
+    if(to<from) out=`<div class="msg bad">The end date is before the start date.</div>`;
+    else { const w=leaveWarning(sid,type,from); if(w) out=`<div class="msg ${w.lvl}">${esc(w.t)}</div>`;
+      const clashes = daysBetween(from,to).filter(d=>{ const c=codeOn(sid,d); return c && c!==type; });
+      if(clashes.length) out+=`<div class="msg warn" style="margin-top:6px">Approving replaces ${clashes.length} scheduled shift${clashes.length>1?"s":""} (${clashes.slice(0,3).map(fmtShort).join(", ")}${clashes.length>3?"…":""}).</div>`;
+    }
+  }
+  $("#rqCheck").innerHTML=out;
+}
+async function approve(id){
+  const r=S.requests[id]; if(!r) return;
+  const w=leaveWarning(r.staffId,r.type,r.from); if(w&&w.lvl==="bad"){ toast(w.t); return; }
+  for(const d of daysBetween(r.from,r.to)){
+    const wk=mondayOf(d), i=(parse(d).getDay()+6)%7, row=weekRow(wk,r.staffId);
+    const cells=[...row.cells]; cells[i]=r.type; queueRow(wk,r.staffId,{cells});
+  }
+  await setReq(id,{...r,status:"approved",decidedAt:new Date().toISOString()});
+  renderAll(); toast("Approved and written into the roster");
+}
+async function setReq(id, body){
+  S.requests[id]=body;
+  if(!S.db) return;
+  try{ await S.db.doc("requests/"+id).set(body); }catch(e){ handleWriteError(e); }
+}
+
+/* ---------- holidays ---------- */
+function renderHolidays(){
+  const today=todayISO(); const hs=[...S.holidays].sort((a,b)=>a.date.localeCompare(b.date));
+  const card=h=>{ const d=parse(h.date); const diff=Math.round((d-parse(today))/864e5);
+    return `<div class="hcard ${h.date<today?"past":""}"><div class="cal"><div class="m">${MONTHS[d.getMonth()]}</div><div class="d">${d.getDate()}</div></div>
+      <div><div class="t">${esc(h.name)}</div><div class="d2">${DAYS[(d.getDay()+6)%7]} ${fmt(h.date)} · ${esc(h.for)}</div>
+      <div class="d2">${h.date<today?"Passed":diff===0?"Today":"In "+diff+" day"+(diff>1?"s":"")}${h.note?" · "+esc(h.note):""}</div></div></div>`; };
+  const up=hs.filter(h=>h.date>=today), past=hs.filter(h=>h.date<today);
+  const grp=(t,f)=>{ const x=up.filter(f); return x.length?`<h2 class="sec">${t}</h2><div class="hgrid">${x.map(card).join("")}</div>`:""; };
+  $("#holBody").innerHTML = hs.length ? `<p class="note" style="margin-top:0">Each contract staff member gets 5 company PH days a year after 1 year of service. Type <b>PH</b> in the roster on the day they take it.</p>`
+    + grp("Hindu staff · next 12 months", h=>/Hindu|Everyone/.test(h.for))
+    + grp("Catholic staff · next 12 months", h=>/Catholic|Fransiska|Everyone/.test(h.for))
+    + (past.length?`<h2 class="sec">Already passed</h2><div class="hgrid">${past.map(card).join("")}</div>`:"")
+    + `<p class="note">Galungan and Kuningan follow the 210-day Pawukon cycle. Double-check dates with the banjar calendar.</p>`
+    : `<div class="empty-state"><b>No holidays loaded</b></div>`;
+}
+
+/* ---------- staff ---------- */
+function renderStaff(){
+  const t=tallies();
+  const list=staffList();
+  $("#staffBody").innerHTML = DEPTS.map(d=>{ const p=list.filter(s=>s.dept===d); if(!p.length) return "";
+    return `<h2 class="sec">${esc(d)}</h2><div class="staffgrid">${p.map(s=>`<button type="button" class="scard" data-staff="${esc(s.id)}">
+      <div class="n">${esc(s.name)}</div><div class="r">${esc(s.title||"")}</div>
+      <div class="f"><span class="pill mute">${esc(s.contract)}</span><span class="pill mute">Started ${fmt(s.start)}</span>${s.contract==="SC"?(isEligible(s)?'<span class="pill ok">Leave unlocked</span>':`<span class="pill warn">Leave from ${fmt(eligibleFrom(s))}</span>`):""}</div>
+      <div class="note">AL ${t[s.id].AL} · EO ${t[s.id].EO} · PH ${t[s.id].PH} · Sick/DC ${t[s.id].SICK+t[s.id].DC}</div></button>`).join("")}</div>`; }).join("");
+}
+let staffEdit=null;
+function openStaff(id){
+  const s = id? S.staff[id] : {name:"",title:"",dept:DEPTS[0],contract:"SC",start:todayISO(),eoFwd:0,phGroup:"Hindu"};
+  staffEdit={id, ...s};
+  const hist = id ? tallies()[id].days : [];
+  $("#staffForm").innerHTML = `<h3>${id?esc(s.name):"Add staff"}</h3>
+    <div class="form">
+      <label>Name<input class="field" id="sfName" value="${esc(s.name)}" required></label>
+      <label>Job title<input class="field" id="sfTitle" value="${esc(s.title||"")}"></label>
+      <div class="row2"><label>Department<select class="field" id="sfDept">${DEPTS.map(d=>`<option ${d===s.dept?"selected":""}>${esc(d)}</option>`).join("")}</select></label>
+      <label>Contract<select class="field" id="sfContract"><option value="SC" ${s.contract==="SC"?"selected":""}>SC · Staff contract</option><option value="DW" ${s.contract==="DW"?"selected":""}>DW · Daily worker</option></select></label></div>
+      <div class="row2"><label>Start date<input class="field" type="date" id="sfStart" value="${esc(s.start)}"></label>
+      <label>EO brought forward<input class="field" type="number" id="sfEo" value="${s.eoFwd||0}" min="0" max="60"></label></div>
+      <label>PH group<select class="field" id="sfPh">${["Hindu","Catholic","None"].map(g=>`<option ${g===s.phGroup?"selected":""}>${g}</option>`).join("")}</select></label>
+      ${id?`<div><div class="note" style="margin-bottom:6px">Leave &amp; absence on the roster (${hist.length})</div><div class="hist">${hist.length?hist.map(h=>`<span class="${chipClass(h.code)}">${h.code}<span style="font:500 10px var(--body)">${fmtShort(h.date)}</span></span>`).join(""):'<span class="note">None yet</span>'}</div></div>`:""}
+      <div id="sfMsg"></div>
+    </div>
+    <div class="foot">${id?`<button type="button" class="btn danger" id="sfArchive">Remove from roster</button>`:"<span></span>"}<div class="row"><button class="btn" value="cancel">Cancel</button><button type="button" class="btn primary" id="sfSave">Save</button></div></div>`;
+  $("#staffDlg").showModal();
+}
+$("#staffForm").addEventListener("click", async e=>{
+  if(e.target.id==="sfSave"){
+    const name=$("#sfName").value.trim(); if(!name){ $("#sfMsg").innerHTML='<div class="msg bad">Enter a name.</div>'; return; }
+    const id = staffEdit.id || (name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+"-"+Date.now().toString(36).slice(-4));
+    const body={...(S.staff[id]||{}), name, title:$("#sfTitle").value.trim(), dept:$("#sfDept").value, contract:$("#sfContract").value, start:$("#sfStart").value||todayISO(), eoFwd:Number($("#sfEo").value)||0, phGroup:$("#sfContract").value==="DW"?"None":$("#sfPh").value};
+    if(body.order==null) body.order = 100 + staffList().length;
+    S.staff[id]=body; $("#staffDlg").close(); renderAll();
+    if(S.db){ try{ await S.db.doc("staff/"+id).set(body); toast("Staff saved"); }catch(err){ handleWriteError(err); } }
+  }
+  if(e.target.id==="sfArchive"){
+    if(e.target.dataset.sure!=="1"){ e.target.dataset.sure="1"; e.target.textContent="Click again to remove"; return; }
+    const id=staffEdit.id; const body={...S.staff[id], archived:true}; S.staff[id]=body; $("#staffDlg").close(); renderAll();
+    if(S.db){ try{ await S.db.doc("staff/"+id).set(body); toast(body.name+" removed from the roster"); }catch(err){ handleWriteError(err); } }
+  }
+});
+
+/* ---------- export ---------- */
+async function exportWeek(){
+  const days=DAYS.map((_,i)=>addDays(S.week,i));
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=[["Department","Name","Title","Contract",...days.map((d,i)=>DAYS[i]+" "+fmtShort(d)),"Remarks"].map(q).join(",")];
+  for(const s of staffList()){ const r=weekRow(S.week,s.id); lines.push([s.dept,s.name,s.title,s.contract,...r.cells.map((c,i)=>c+(r.short[i]?" (short)":"")),r.remark].map(q).join(",")); }
+  const csv=lines.join("\r\n"), name=`mahima-roster-week-${isoWeek(S.week)}-${S.week}.csv`;
+  if(!S.downloads){ try{ await navigator.clipboard.writeText(csv); toast("Downloads aren't available here, so the CSV was copied to your clipboard"); }catch(e){ toast("Export isn't available in this view"); } return; }
+  try{ await S.downloads.save({filename:name, data:csv}); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't export the file"); }
+}
+async function copyPrev(){
+  const prev=addDays(S.week,-7); if(!S.weeks[prev] && !S.pending[prev]){ toast("Last week has no roster to copy"); return; }
+  const btn=$("#copyPrev");
+  if(S.weeks[S.week] && Object.values(S.weeks[S.week].cells||{}).some(a=>a.some(Boolean)) && btn.dataset.sure!=="1"){
+    btn.dataset.sure="1"; btn.textContent="Overwrite this week?"; setTimeout(()=>{btn.dataset.sure="";btn.textContent="Copy last week";},4000); return;
+  }
+  btn.dataset.sure=""; btn.textContent="Copy last week";
+  for(const s of staffList()){ const r=weekRow(prev,s.id); const cells=r.cells.map(c=>["AL","EO","PH","SICK","DC","X"].includes(c)?"":c); queueRow(S.week,s.id,{cells,short:[...r.short],remark:""}); }
+  renderAll(); toast("Copied shift pattern from last week (leave days left blank)");
+}
+
+/* ---------- tabs & events ---------- */
+function setTab(t){
+  S.tab=t; try{localStorage.setItem("mahima.tab",t);}catch(e){}
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
+  document.querySelectorAll("section[id^=tab-]").forEach(s=>s.hidden = s.id!=="tab-"+t);
+  renderAll();
+}
+function fillSelects(){
+  const opts = `<option value="">All departments</option>`+DEPTS.map(d=>`<option ${d===S.dept?"selected":""}>${esc(d)}</option>`).join("");
+  $("#deptFilter").innerHTML=opts;
+  const lv=$("#leaveDept").value; $("#leaveDept").innerHTML=`<option value="">All departments</option>`+DEPTS.map(d=>`<option ${d===lv?"selected":""}>${esc(d)}</option>`).join("");
+  const cur=$("#rqStaff").value;
+  $("#rqStaff").innerHTML = `<option value="">Choose…</option>`+staffList().map(s=>`<option value="${esc(s.id)}" ${s.id===cur?"selected":""}>${esc(s.name)} · ${esc(s.dept)}</option>`).join("");
+}
+function renderAll(){
+  fillSelects();
+  if(S.tab==="roster"){ renderBrush(); renderRoster(); }
+  if(S.tab==="leave") renderLeave();
+  if(S.tab==="holidays") renderHolidays();
+  if(S.tab==="staff") renderStaff();
+  renderRequests();
+}
+$("#tabs").addEventListener("click", e=>{ const b=e.target.closest("[data-tab]"); if(b) setTab(b.dataset.tab); });
+$("#prevWk").onclick=()=>{ S.week=addDays(S.week,-7); renderAll(); };
+$("#nextWk").onclick=()=>{ S.week=addDays(S.week,7); renderAll(); };
+$("#thisWk").onclick=()=>{ S.week=mondayOf(todayISO()); renderAll(); };
+$("#deptFilter").onchange=e=>{ S.dept=e.target.value; renderRoster(); };
+$("#search").oninput=e=>{ S.q=e.target.value; renderRoster(); };
+$("#leaveDept").onchange=renderLeave;
+$("#exportWk").onclick=exportWeek;
+$("#copyPrev").onclick=copyPrev;
+$("#addStaff").onclick=()=>openStaff(null);
+$("#brush").addEventListener("click", e=>{ const b=e.target.closest("[data-brush]"); if(!b) return; const k=b.dataset.brush; S.brush = (k==="__none"||S.brush===k)? null : k; renderBrush(); });
+$("#rosterBody").addEventListener("click", e=>{ const b=e.target.closest(".cellbtn"); if(!b) return; const sid=b.dataset.sid, day=Number(b.dataset.day); if(S.brush!==null) paint(sid,day); else openCell(sid,day); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.brush!==null && !document.querySelector("dialog[open]")){ S.brush=null; renderBrush(); } });
+$("#leaveTable").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
+$("#staffBody").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
+["rqStaff","rqType","rqFrom","rqTo"].forEach(id=>$("#"+id).addEventListener("change", ()=>{ if(id==="rqFrom" && (!$("#rqTo").value || $("#rqTo").value<$("#rqFrom").value)) $("#rqTo").value=$("#rqFrom").value; checkReqForm(); }));
+$("#reqForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const staffId=$("#rqStaff").value, type=$("#rqType").value, from=$("#rqFrom").value, to=$("#rqTo").value||from;
+  if(!staffId||!from){ $("#rqCheck").innerHTML='<div class="msg bad">Choose a staff member and a start date.</div>'; return; }
+  if(to<from){ return; }
+  const w=leaveWarning(staffId,type,from); if(w&&w.lvl==="bad"){ return; }
+  const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await setReq(id,{staffId,type,from,to,note:$("#rqNote").value.trim(),status:"pending",createdAt:new Date().toISOString()});
+  $("#rqNote").value=""; renderRequests(); toast("Request sent for approval");
+});
+document.body.addEventListener("click", async e=>{
+  const a=e.target.closest("[data-approve]"), r=e.target.closest("[data-reject]"), d=e.target.closest("[data-delreq]");
+  if(a) approve(a.dataset.approve);
+  if(r){ const x=S.requests[r.dataset.reject]; await setReq(r.dataset.reject,{...x,status:"rejected",decidedAt:new Date().toISOString()}); renderRequests(); toast("Request declined"); }
+  if(d){ const id=d.dataset.delreq; delete S.requests[id]; renderRequests(); if(S.db){ try{ await S.db.doc("requests/"+id).delete(); }catch(err){ handleWriteError(err);} } }
+});
+
+/* ---------- boot ---------- */
+renderLegend(); setTab(S.tab);
+function setSync(state){ const d=$("#syncDot"), t=$("#syncText"); d.className="dot "+(state==="live"?"live":state==="off"?"off":""); t.textContent= state==="live"?"Live · changes save for everyone":state==="off"?"Offline view":"Connecting…"; }
+(async ()=>{
+  const db = window.claude ? await window.claude.use("db").catch(()=>null) : null;
+  if(!db){ setSync("off"); $("#offline").hidden=false; renderAll(); return; }
+  S.db=db; S.live=true; setSync("live");
+  window.claude.use("downloads").then(x=>{ S.downloads=x; }).catch(()=>{});
+  const onErr = e => { if(e && e.code==="revoked"){ setSync("off"); } };
+  let tmr; const rerender=()=>{ clearTimeout(tmr); tmr=setTimeout(renderAll,60); };
+  db.collection("staff").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.staff=o; rerender(); }, onErr);
+  db.collection("weeks").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.weeks=o; rerender(); }, onErr);
+  db.collection("requests").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.requests=o; rerender(); }, onErr);
+  db.doc("config/holidays").onSnapshot(snap=>{ S.holidays = snap.exists ? (snap.data().items||[]) : []; rerender(); }, onErr);
+})();
+})();
+</script>
