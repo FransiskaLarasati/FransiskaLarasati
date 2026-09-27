@@ -135,8 +135,8 @@ tr.cover td.namecol{background:var(--surface-2);font-weight:600;color:var(--ink-
 .chip.short::after{content:"";position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--short);box-shadow:0 0 0 1.5px var(--surface)}
 .chip.short{box-shadow:inset 0 -3px 0 var(--short)}
 .k-M{background:var(--c-m);color:var(--c-m-ink)} .k-M2{background:var(--c-m2);color:var(--c-m2-ink)}
-.k-M3{background:var(--c-m3);color:var(--c-m3-ink)} .k-MD{background:var(--c-md);color:var(--c-md-ink)}
-.k-MOD{background:var(--c-mod);color:var(--c-mod-ink)} .k-A{background:var(--c-a);color:var(--c-a-ink)}
+.k-M3{background:var(--c-m3);color:var(--c-m3-ink)} .k-MD{background:var(--c-mod);color:var(--c-mod-ink)}
+.k-A{background:var(--c-a);color:var(--c-a-ink)}
 .k-N{background:var(--c-n);color:var(--c-n-ink)} .k-OFF{background:var(--c-off);color:var(--c-off-ink);font-weight:500}
 .k-EO{background:var(--c-eo);color:var(--c-eo-ink)} .k-PH{background:var(--c-ph);color:var(--c-ph-ink)}
 .k-AL{background:var(--c-al);color:var(--c-al-ink)} .k-SICK{background:var(--c-sick);color:var(--c-sick-ink)}
@@ -336,8 +336,7 @@ const SHIFTS = [
   {k:"M",   h:"06:30–14:30", d:"Morning", work:true},
   {k:"M2",  h:"08:00–16:00", d:"Morning 2", work:true},
   {k:"M3",  h:"12:00–20:00", d:"Mid-day", work:true},
-  {k:"MD",  h:"12:00–20:00", d:"Mid-day kitchen", work:true},
-  {k:"MOD", h:"09:00–17:00", d:"Manager on duty", work:true},
+  {k:"MD",  h:"09:00–17:00", d:"Manager on duty (MD = MOD)", work:true},
   {k:"A",   h:"15:00–23:00", d:"Afternoon / evening", work:true},
   {k:"N",   h:"22:30–06:30", d:"Night security", work:true},
   {k:"OFF", h:"—", d:"Day off (1 per week)", rest:true},
@@ -456,7 +455,7 @@ function handleWriteError(e){
 /* ---------- rendering: roster ---------- */
 function renderBrush(){
   const b = $("#brush");
-  const items = ["M","M2","M3","MD","MOD","A","N","OFF","EO","PH","AL","SICK","DC",""];
+  const items = ["M","M2","M3","MD","A","N","OFF","EO","PH","AL","SICK","DC",""];
   b.innerHTML = `<span class="lbl">Paint</span>` + items.map(k=>`<button type="button" data-brush="${k}" aria-pressed="${S.brush===k}" title="${k?esc(k+" · "+SHIFT[k].d):"Clear cell"}">${k?chipHTML(k):'<span class="chip empty">clear</span>'}</button>`).join("")
     + `<button type="button" class="btn small" data-brush="__none" ${S.brush===null?"hidden":""}>Stop painting</button>`
     + `<span class="hint">${S.brush===null?"Pick a code, then click cells to fill them fast. Or click any cell to edit it.":"Painting <b>"+esc(S.brush||"clear")+"</b> — click cells to apply."}</span>`;
@@ -550,7 +549,7 @@ $("#cellForm").addEventListener("click", e=>{
   if(b && !b.disabled){ edit.code=b.dataset.code; $("#cTime") && (edit.short=$("#cShort").checked, edit.remark=$("#cRemark").value); drawCell(); return; }
   if(e.target.id==="cSave"){
     const t=$("#cTime").value, tx=$("#cText").value.trim().toUpperCase();
-    if(t) edit.code=t; else if(tx) edit.code=tx;
+    if(t) edit.code=t; else if(tx) edit.code=(tx==="MOD"?"MD":tx);
     const r = weekRow(S.week, edit.sid);
     const cells=[...r.cells], short=[...r.short];
     cells[edit.day]=edit.code; short[edit.day]=$("#cShort").checked?1:0;
