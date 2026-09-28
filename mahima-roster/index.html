@@ -243,12 +243,9 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
 
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="roster" aria-selected="true">Roster &amp; holidays</button>
-    <button role="tab" data-tab="leave" aria-selected="false">Leave balances</button>
-    <button role="tab" data-tab="requests" aria-selected="false">Leave requests <span class="badge" id="reqBadge" hidden>0</span></button>
-    <button role="tab" data-tab="staff" aria-selected="false">Staff</button>
-    <button role="tab" data-tab="docs" aria-selected="false">Contracts &amp; payslips</button>
-    <button role="tab" data-tab="pay" aria-selected="false">Payroll</button>
-    <button role="tab" data-tab="sc" aria-selected="false">Service charge</button>
+    <button role="tab" data-tab="leave" aria-selected="false">Leave <span class="badge" id="reqBadge" hidden>0</span></button>
+    <button role="tab" data-tab="docs" aria-selected="false">Staff &amp; documents</button>
+    <button role="tab" data-tab="pay" aria-selected="false">Payroll &amp; service charge</button>
   </nav>
 
   <div class="banner" id="offline" hidden>Live data isn't available in this view. Open the roster from its claude.ai link to see and edit the shared schedule.</div>
@@ -274,19 +271,6 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
 
   <!-- LEAVE -->
   <section id="tab-leave" hidden>
-    <div class="stats" id="leaveStats"></div>
-    <div class="bar">
-      <select class="field" id="leaveDept" aria-label="Department"><option value="">All departments</option></select>
-      <div class="grow"></div>
-      <span class="note">Counting starts 1 Oct 2026: everyone begins with 17 (12 AL + 5 PH). Every AL, EO, PH or SICK typed in the roster from 1 Oct on is counted here. Each sick day needs proof: a doctor certificate, or a manager approval letter, or a hospital bill.</span>
-    </div>
-    <div id="noProof"></div>
-    <div class="tablewrap"><table class="data" id="leaveTable"></table></div>
-    <p class="note">Staff on contract (SC) get 12 days annual leave + 5 public holidays a year. Everyone on staff by 1 Oct 2026 can use it from 1 Oct 2026; people who join later can use it after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
-  </section>
-
-  <!-- REQUESTS -->
-  <section id="tab-requests" hidden>
     <div class="cols">
       <div class="panel">
         <h2>Request leave</h2>
@@ -311,18 +295,29 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
         </form>
       </div>
       <div>
-        <h2 class="sec" style="margin-top:0">Waiting for approval</h2>
+        <h2 class="sec" style="margin-top:0">Leave requests waiting for approval</h2>
         <div class="list" id="pendingList"></div>
         <h2 class="sec">Decided</h2>
         <div class="list" id="doneList"></div>
       </div>
     </div>
+    <h2 class="sec">Leave balances</h2>
+    <div class="stats" id="leaveStats"></div>
+    <div class="bar">
+      <select class="field" id="leaveDept" aria-label="Department"><option value="">All departments</option></select>
+      <div class="grow"></div>
+      <span class="note">Counting starts 1 Oct 2026: everyone begins with 17 (12 AL + 5 PH). Every AL, EO, PH or SICK typed in the roster from 1 Oct on is counted here. Each sick day needs proof: a doctor certificate, or a manager approval letter, or a hospital bill.</span>
+    </div>
+    <div id="noProof"></div>
+    <div class="tablewrap"><table class="data" id="leaveTable"></table></div>
+    <p class="note">Staff on contract (SC) get 12 days annual leave + 5 public holidays a year. Everyone on staff by 1 Oct 2026 can use it from 1 Oct 2026; people who join later can use it after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
   </section>
+
 
 
   <!-- STAFF -->
   <section id="tab-docs" hidden>
-    <div class="bar"><div class="grow note">Employment contracts, Daily Worker agreements and offer letters. Only managers with edit access can see or upload them. Click a person to upload.</div></div>
+    <div class="bar"><div class="grow note">Everyone's details, contracts, Daily Worker agreements, offer letters and payslips in one place. Click a person to edit them or upload their documents. Only managers with edit access can see documents.</div><button class="btn primary" id="addStaff">Add staff</button></div>
     <div class="stats" id="docStats"></div>
     <div class="panel" id="bulkPanel" style="margin-bottom:16px">
       <h2>Upload many files at once</h2>
@@ -339,13 +334,16 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <div class="tablewrap" style="margin-bottom:16px"><table class="data" id="payTable"></table></div>
     <h2 class="sec">Contracts &amp; agreements</h2>
     <div class="tablewrap"><table class="data" id="docTable"></table></div>
+    <h2 class="sec">Staff directory</h2>
+    <div id="staffBody"></div>
   </section>
 
-  <section id="tab-sc" hidden>
+
+  <section id="tab-pay" hidden>
     <div id="scLocked" class="empty-state" hidden><b>Managers only</b>Only managers with edit access can see service charge.</div>
     <div id="scBody">
       <div class="panel" style="margin-bottom:14px">
-        <h2>Monthly service charge</h2>
+        <h2>1 · Service charge</h2>
         <p class="note" style="margin-top:0">Salary follows the contract. Service charge is paid on the 15th and split by grade: managers &amp; supervisors 100%, pre-opening staff 75%, staff hired in 2026 50%. Enter the month's total and each person's share is worked out from their grade. Grades stay hidden; click Edit grades to change one. Payslips show only the amount.</p>
         <div class="bar">
           <label class="note" for="scMonth">Month</label><input class="field" type="month" id="scMonth">
@@ -360,17 +358,15 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
       </div>
       <div class="stats" id="scStats"></div>
       <div class="tablewrap"><table class="data" id="scTable"></table></div>
-      <h2 class="sec">Saved months</h2>
+      <h2 class="sec">Saved service charge months</h2>
       <div id="scHist"></div>
     </div>
-  </section>
-
-  <section id="tab-pay" hidden>
+    <div style="height:18px"></div>
     <div id="payLocked" class="empty-state" hidden><b>Managers only</b>Only managers with edit access can see payroll.</div>
     <div id="payBody">
       <div class="panel" style="margin-bottom:14px">
-        <h2>Monthly payroll</h2>
-        <p class="note" style="margin-top:0">Salary and tax carry over from last month (from your payroll sheet). Service charge comes from the Service charge tab. Add any bonus or deduction, then make every payslip with one button. Changes save by themselves.</p>
+        <h2>2 · Payroll &amp; payslips</h2>
+        <p class="note" style="margin-top:0">Salary and tax carry over from last month (from your payroll sheet). Service charge comes from section 1 above. Add any bonus or deduction, then make every payslip with one button. Changes save by themselves.</p>
         <div class="bar">
           <label class="note" for="prMonth">Month</label><input class="field" type="month" id="prMonth">
           <div class="grow"></div>
@@ -384,10 +380,6 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     </div>
   </section>
 
-  <section id="tab-staff" hidden>
-    <div class="bar"><div class="grow note">Click a person to edit their details or see every leave day they've taken.</div><button class="btn primary" id="addStaff">Add staff</button></div>
-    <div id="staffBody"></div>
-  </section>
 </div>
 
 <dialog id="cellDlg"><form method="dialog" class="dlg" id="cellForm"></form></dialog>
@@ -891,7 +883,7 @@ function renderPayroll(){
   if(!$("#prMonth").value){ const t=todayISO(); $("#prMonth").value = Number(t.slice(8))>=20 ? t.slice(0,7) : prevMonth(); }
   const m=$("#prMonth").value; loadPayDraft(m);
   const scSaved=!!S.scMonths[m];
-  $("#prNote").innerHTML = (scSaved?"":`<div class="msg warn">No service charge saved for ${fmtMonth(m)} yet. Save it on the Service charge tab and it appears here.</div>`)
+  $("#prNote").innerHTML = (scSaved?"":`<div class="msg warn">No service charge saved for ${fmtMonth(m)} yet. Save it in section 1 above and it appears here.</div>`)
     + (payDraft.generatedAt?`<div class="msg ok" style="margin-top:6px">Payslips generated ${fmt(payDraft.generatedAt.slice(0,10))}. Generate again after changes to replace them.</div>`:"");
   const num=(sid,f,v,w)=>`<input class="field" inputmode="numeric" data-pay="${esc(sid)}" data-f="${f}" value="${v?Number(v).toLocaleString("id-ID"):""}" placeholder="0" style="width:${w||120}px;text-align:right">`;
   const txt=(sid,f,v,ph)=>`<input class="field" data-pay="${esc(sid)}" data-f="${f}" value="${esc(v||"")}" placeholder="${ph}" style="width:150px;margin-top:4px">`;
@@ -1146,10 +1138,8 @@ function renderAll(){
   fillSelects();
   if(S.tab==="roster"){ renderBrush(); renderRoster(); renderHolidays(); }
   if(S.tab==="leave") renderLeave();
-  if(S.tab==="staff") renderStaff();
-  if(S.tab==="docs") renderDocs();
-  if(S.tab==="sc") renderSC();
-  if(S.tab==="pay") renderPayroll();
+  if(S.tab==="docs"){ renderDocs(); renderStaff(); }
+  if(S.tab==="pay"){ renderSC(); renderPayroll(); }
   renderRequests();
 }
 $("#tabs").addEventListener("click", e=>{ const b=e.target.closest("[data-tab]"); if(b) setTab(b.dataset.tab); });
