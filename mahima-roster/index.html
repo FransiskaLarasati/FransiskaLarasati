@@ -140,7 +140,7 @@ tr.cover td.namecol{background:var(--surface-2);font-weight:600;color:var(--ink-
 .k-N{background:var(--c-n);color:var(--c-n-ink)} .k-OFF{background:var(--c-off);color:var(--c-off-ink);font-weight:500}
 .k-EO{background:var(--c-eo);color:var(--c-eo-ink)} .k-PH{background:var(--c-ph);color:var(--c-ph-ink)}
 .k-AL{background:var(--c-al);color:var(--c-al-ink)} .k-SICK{background:var(--c-sick);color:var(--c-sick-ink)}
-.k-DC{background:var(--c-dc);color:var(--c-dc-ink)} .k-X{background:var(--ball);color:#27300a}
+.k-DC{background:var(--c-sick);color:var(--c-sick-ink)} .k-X{background:var(--ball);color:#27300a}
 
 /* legend */
 .legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 16px;margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
@@ -211,6 +211,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
 .dlg .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .check{display:flex;gap:8px;align-items:center;font-size:13px}
 .dlg .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.proof{display:grid;gap:8px}
 .empty-state{padding:34px 16px;text-align:center;color:var(--ink-3);border:1px dashed var(--line-strong);border-radius:8px;background:var(--surface)}
 .empty-state b{display:block;color:var(--ink);font:600 20px var(--display);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);z-index:50;max-width:calc(100vw - 32px)}
@@ -272,8 +273,9 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <div class="bar">
       <select class="field" id="leaveDept" aria-label="Department"><option value="">All departments</option></select>
       <div class="grow"></div>
-      <span class="note">Counting starts 1 Oct 2026: everyone begins with 17 (12 AL + 5 PH). Every AL, EO, PH, SICK or DC typed in the roster from 1 Oct on is counted here.</span>
+      <span class="note">Counting starts 1 Oct 2026: everyone begins with 17 (12 AL + 5 PH). Every AL, EO, PH or SICK typed in the roster from 1 Oct on is counted here. Each sick day needs proof: a doctor certificate, or a manager approval letter, or a hospital bill.</span>
     </div>
+    <div id="noProof"></div>
     <div class="tablewrap"><table class="data" id="leaveTable"></table></div>
     <p class="note">Rules from the master sheet: staff on contract (SC) get 12 days annual leave + 5 public holidays a year, usable after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
   </section>
@@ -290,7 +292,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
               <option value="AL">AL · Annual leave</option>
               <option value="EO">EO · Extra off</option>
               <option value="PH">PH · Public holiday</option>
-              <option value="SICK">SICK · Sick leave</option>
+              <option value="SICK">SICK · Sick / DC</option>
               <option value="OFF">OFF · Day off swap</option>
             </select>
           </label>
@@ -333,17 +335,16 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
 "use strict";
 /* ---------- constants ---------- */
 const SHIFTS = [
-  {k:"M",   h:"06:30–14:30", d:"Morning", work:true},
-  {k:"M2",  h:"08:00–16:00", d:"Morning 2", work:true},
-  {k:"M3",  h:"12:00–20:00", d:"Mid-day", work:true},
-  {k:"A",   h:"15:00–23:00", d:"Afternoon / evening", work:true},
+  {k:"M",   h:"06:30–07:00 start", d:"Morning", work:true},
+  {k:"M2",  h:"08:00 start", d:"Morning 2", work:true},
+  {k:"M3",  h:"12:00 start", d:"Middle / Manager on duty", work:true},
+  {k:"A",   h:"15:00 start", d:"Afternoon", work:true},
   {k:"N",   h:"22:30–06:30", d:"Night security", work:true},
   {k:"OFF", h:"—", d:"Day off (1 per week)", rest:true},
   {k:"EO",  h:"—", d:"Extra off · counted", rest:true, leave:true},
   {k:"PH",  h:"—", d:"Public holiday · counted", rest:true, leave:true},
   {k:"AL",  h:"—", d:"Annual leave · counted", rest:true, leave:true},
-  {k:"SICK",h:"—", d:"Sick leave", rest:true, absence:true},
-  {k:"DC",  h:"—", d:"Did not come", absence:true},
+  {k:"SICK",h:"needs proof", d:"Sick / DC (did not come)", rest:true, absence:true},
   {k:"X",   h:"—", d:"First day of work", work:true},
 ];
 const SHIFT = Object.fromEntries(SHIFTS.map(s => [s.k, s]));
@@ -357,6 +358,7 @@ const S = {
   db:null, downloads:null, live:false,
   staff:{}, weeks:{}, requests:{}, holidays:[],
   week: mondayOf(todayISO()), tab:"roster", brush:null, dept:"", q:"",
+  sickdocs:{}, assets:null,
   pending:{}, // weekId -> {sid: {cells, short, remark}}
 };
 try { const t = localStorage.getItem("mahima.tab"); if (t) S.tab = t; } catch(e){}
@@ -401,16 +403,38 @@ function weekRow(weekId, sid){
 }
 function codeOn(sid, dateISO){ const wk=mondayOf(dateISO); const i=(parse(dateISO).getDay()+6)%7; return weekRow(wk,sid).cells[i]||""; }
 function holidaysOn(dateISO){ return S.holidays.filter(h=>h.date===dateISO); }
+const PROOF_KINDS = {doctor:"Doctor certificate", manager:"Manager approval letter", hospital:"Hospital bill"};
+function proofFor(sid, dateISO){ return Object.values(S.sickdocs).find(p=>p.staffId===sid && p.from<=dateISO && dateISO<=p.to) || null; }
+function sickCell(x){ if(!x.SICK) return "—"; return x.SICK + (x.noProof.length?` <span class="pill bad" title="Sick days without proof">${x.noProof.length} no proof</span>`:` <span class="pill ok">proof ✓</span>`); }
+function proofHTML(sid, date){
+  const p = proofFor(sid, date);
+  if(p) return `<div class="msg ok">Proof on file: <b>${esc(PROOF_KINDS[p.kind]||p.kind)}</b> · ${fmtShort(p.from)}${p.to!==p.from?" – "+fmtShort(p.to):""} · <a href="/_blob/${esc(p.assetId)}" target="_blank" rel="noopener">Open ${esc(p.fileName||"file")}</a></div>`;
+  if(!S.assets) return `<div class="msg warn">Sick / DC needs proof: a doctor certificate, or a manager approval letter, or a hospital bill. Only managers with edit access can upload it.</div>`;
+  return `<div class="proof"><div class="msg warn">Sick / DC needs proof. Upload one of these:</div>
+    <div class="row"><select class="field" id="pKind" aria-label="Proof type">${Object.entries(PROOF_KINDS).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select>
+    <label class="check" for="pTo">Covers until</label><input class="field" type="date" id="pTo" value="${date}" min="${date}"></div>
+    <div class="row"><input class="field" type="file" id="pFile" accept="application/pdf,image/png,image/jpeg,image/webp" style="flex:1;min-width:0"><button type="button" class="btn" id="pUpload">Upload proof</button></div>
+    <div id="pMsg"></div></div>`;
+}
+async function uploadProof(sid, from, to, kind, file){
+  let type = file.type;
+  if(!type){ const ext=(file.name.split(".").pop()||"").toLowerCase(); type={pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[ext]||""; }
+  const up = await S.assets.upload(file, type?{type}:undefined);
+  const id = sid+"_"+from+"_"+Date.now().toString(36);
+  const body = {staffId:sid, from, to, kind, assetId:up.id, fileName:file.name, uploadedAt:new Date().toISOString()};
+  await S.db.doc("sickdocs/"+id).set(body);
+  S.sickdocs[id]=body;
+}
 
 /* leave tallies from the whole roster */
 function tallies(){
   const t={};
-  for(const s of staffList()) t[s.id]={AL:0,EO:0,PH:0,SICK:0,DC:0,days:[]};
+  for(const s of staffList()) t[s.id]={AL:0,EO:0,PH:0,SICK:0,days:[],noProof:[]};
   const weekIds = new Set([...Object.keys(S.weeks), ...Object.keys(S.pending)]);
   for(const wk of weekIds){
     for(const sid of Object.keys(t)){
       const r = weekRow(wk,sid);
-      r.cells.forEach((c,i)=>{ if(c in t[sid] && addDays(wk,i)>=LEAVE_START){ t[sid][c]++; t[sid].days.push({date:addDays(wk,i),code:c}); } });
+      r.cells.forEach((c,i)=>{ if(c==="DC") c="SICK"; const d=addDays(wk,i); if(["AL","EO","PH","SICK"].includes(c) && d>=LEAVE_START){ t[sid][c]++; t[sid].days.push({date:d,code:c}); if(c==="SICK" && !proofFor(sid,d)) t[sid].noProof.push(d); } });
     }
   }
   for(const sid in t) t[sid].days.sort((a,b)=>a.date.localeCompare(b.date));
@@ -455,7 +479,7 @@ function handleWriteError(e){
 /* ---------- rendering: roster ---------- */
 function renderBrush(){
   const b = $("#brush");
-  const items = ["M","M2","M3","A","N","OFF","EO","PH","AL","SICK","DC",""];
+  const items = ["M","M2","M3","A","N","OFF","EO","PH","AL","SICK",""];
   b.innerHTML = `<span class="lbl">Paint</span>` + items.map(k=>`<button type="button" data-brush="${k}" aria-pressed="${S.brush===k}" title="${k?esc(k+" · "+SHIFT[k].d):"Clear cell"}">${k?chipHTML(k):'<span class="chip empty">clear</span>'}</button>`).join("")
     + `<button type="button" class="btn small" data-brush="__none" ${S.brush===null?"hidden":""}>Stop painting</button>`
     + `<span class="hint">${S.brush===null?"Pick a code, then click cells to fill them fast. Or click any cell to edit it.":"Painting <b>"+esc(S.brush||"clear")+"</b> — click cells to apply."}</span>`;
@@ -542,14 +566,25 @@ function drawCell(){
     <label class="check"><input type="checkbox" id="cShort" ${edit.short?"checked":""}> Short time (shorter shift than normal)</label>
     <label class="form" style="display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--ink-2)">Week remark<input class="field" id="cRemark" value="${esc(edit.remark)}" placeholder="e.g. World Sport Day"></label>
     ${w?`<div class="msg ${w.lvl}">${esc(w.t)}</div>`:""}
+    ${edit.code==="SICK"?proofHTML(edit.sid, d):""}
     <div class="foot"><button class="btn" value="cancel">Cancel</button><button class="btn primary" id="cSave" type="button" ${w&&w.lvl==="bad"?"disabled":""}>Save</button></div>`;
 }
-$("#cellForm").addEventListener("click", e=>{
+$("#cellForm").addEventListener("click", async e=>{
+  if(e.target.id==="pUpload"){
+    const f=$("#pFile").files[0], to=$("#pTo").value||edit.date;
+    if(!f){ $("#pMsg").innerHTML='<div class="msg bad">Choose the file first (PDF or photo).</div>'; return; }
+    if(to<edit.date){ $("#pMsg").innerHTML='<div class="msg bad">"Covers until" can\'t be before this day.</div>'; return; }
+    e.target.disabled=true; e.target.textContent="Uploading…";
+    try{ await uploadProof(edit.sid, edit.date, to, $("#pKind").value, f); edit.short=$("#cShort").checked; edit.remark=$("#cRemark").value; drawCell(); toast("Proof uploaded"); }
+    catch(err){ const c=err&&err.code; e.target.disabled=false; e.target.textContent="Upload proof";
+      $("#pMsg").innerHTML=`<div class="msg bad">${c==="unsupported_type"?"Upload a PDF, JPG, PNG or WEBP file.":c==="too_large"?"That file is over 20 MB. Take a smaller photo or scan.":"Upload failed. Try again."}</div>`; }
+    return;
+  }
   const b = e.target.closest("[data-code]");
   if(b && !b.disabled){ edit.code=b.dataset.code; $("#cTime") && (edit.short=$("#cShort").checked, edit.remark=$("#cRemark").value); drawCell(); return; }
   if(e.target.id==="cSave"){
     const t=$("#cTime").value, tx=$("#cText").value.trim().toUpperCase();
-    if(t) edit.code=t; else if(tx) edit.code=tx;
+    if(t) edit.code=t; else if(tx) edit.code=(tx==="DC"?"SICK":tx);
     const r = weekRow(S.week, edit.sid);
     const cells=[...r.cells], short=[...r.short];
     cells[edit.day]=edit.code; short[edit.day]=$("#cShort").checked?1:0;
@@ -566,7 +601,7 @@ function paint(sid, day){
   const r = weekRow(S.week,sid); const cells=[...r.cells]; cells[day]=code;
   queueRow(S.week, sid, {cells});
   renderAll();
-  if(w) toast(w.t);
+  if(w) toast(w.t); else if(code==="SICK" && !proofFor(sid,date)) toast("Sick / DC marked. Click the cell to upload proof.");
 }
 
 /* ---------- leave balances ---------- */
@@ -580,20 +615,22 @@ function renderLeave(){
   const tot = k => list.reduce((n,s)=>n+t[s.id][k],0);
   $("#leaveStats").innerHTML = [
     [sc.filter(isEligible).length+" / "+sc.length,"Contract staff with leave unlocked"],
-    [tot("AL"),"AL days taken since 1 Oct"],[tot("EO"),"EO days taken since 1 Oct"],[tot("PH"),"PH days taken since 1 Oct"],[tot("SICK")+tot("DC"),"Sick / did-not-come since 1 Oct"],
+    [tot("AL"),"AL days taken since 1 Oct"],[tot("EO"),"EO days taken since 1 Oct"],[tot("PH"),"PH days taken since 1 Oct"],[tot("SICK"),"Sick / DC days since 1 Oct"],
   ].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
   const rows = list.map(s=>{
     const x=t[s.id];
-    if(s.contract==="DW") return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td><td><span class="pill mute">DW</span></td><td colspan="5" class="note">Daily worker · not eligible for EO, AL or PH</td><td class="num">${x.SICK+x.DC||"—"}</td></tr>`;
+    if(s.contract==="DW") return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td><td><span class="pill mute">DW</span></td><td colspan="5" class="note">Daily worker · not eligible for EO, AL or PH</td><td class="num">${sickCell(x)}</td><td></td></tr>`;
     const el = isEligible(s), eoLeft=(s.eoFwd||0)-x.EO, left=17-x.AL-x.EO-x.PH;
     return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td>
       <td>${el?'<span class="pill ok">Unlocked</span>':`<span class="pill warn">From ${fmt(eligibleFrom(s))}</span>`}</td>
       <td>${meter(x.AL,12,"var(--c-al-ink)")}</td>
       <td>${meter(x.PH,5,"var(--c-ph-ink)")}<div class="note">${esc(s.phGroup||"")}</div></td>
       <td class="num">${s.eoFwd||0}</td><td class="num">${x.EO}</td><td class="num ${eoLeft<0?"neg":""}">${eoLeft}</td>
-      <td class="num">${x.SICK+x.DC||"—"}</td>
+      <td class="num">${sickCell(x)}</td>
       <td class="num"><b class="${left<0?"neg":""}" style="font:700 20px var(--display)">${left}</b></td></tr>`;
   }).join("");
+  const missing = list.flatMap(s=>t[s.id].noProof.map(d=>({s,d})));
+  $("#noProof").innerHTML = missing.length ? `<div class="panel" style="margin-bottom:14px"><h2>Sick days waiting for proof (${missing.length})</h2><div class="list">${missing.map(({s,d})=>`<div class="req"><div><div class="t">${esc(s.name)} · ${chipHTML("SICK")}</div><div class="d">${DAYS[(parse(d).getDay()+6)%7]} ${fmt(d)} · needs a doctor certificate, manager approval letter or hospital bill</div></div><div class="acts"><button class="btn small primary" data-proof="${esc(s.id)}|${d}">${S.assets?"Upload proof":"Open day"}</button></div></div>`).join("")}</div></div>` : "";
   $("#leaveTable").innerHTML = `<thead><tr><th>Staff</th><th>Leave status</th><th>Annual leave (AL)</th><th>Public holiday (PH)</th><th class="num">EO balance 1 Oct</th><th class="num">EO used</th><th class="num">EO left</th><th class="num">Sick / DC</th><th class="num">Left of 17</th></tr></thead><tbody>${rows}</tbody>`;
 }
 
@@ -668,7 +705,7 @@ function renderStaff(){
     return `<h2 class="sec">${esc(d)}</h2><div class="staffgrid">${p.map(s=>`<button type="button" class="scard" data-staff="${esc(s.id)}">
       <div class="n">${esc(s.name)}</div><div class="r">${esc(s.title||"")}</div>
       <div class="f"><span class="pill mute">${esc(s.contract)}</span><span class="pill mute">Started ${fmt(s.start)}</span>${s.contract==="SC"?(isEligible(s)?'<span class="pill ok">Leave unlocked</span>':`<span class="pill warn">Leave from ${fmt(eligibleFrom(s))}</span>`):""}</div>
-      <div class="note">AL ${t[s.id].AL} · EO ${t[s.id].EO} · PH ${t[s.id].PH} · Sick/DC ${t[s.id].SICK+t[s.id].DC}</div></button>`).join("")}</div>`; }).join("");
+      <div class="note">AL ${t[s.id].AL} · EO ${t[s.id].EO} · PH ${t[s.id].PH} · Sick/DC ${t[s.id].SICK}</div></button>`).join("")}</div>`; }).join("");
 }
 let staffEdit=null;
 function openStaff(id){
@@ -756,6 +793,7 @@ $("#thisWk").onclick=()=>{ S.week=mondayOf(todayISO()); renderAll(); };
 $("#deptFilter").onchange=e=>{ S.dept=e.target.value; renderRoster(); };
 $("#search").oninput=e=>{ S.q=e.target.value; renderRoster(); };
 $("#leaveDept").onchange=renderLeave;
+$("#noProof").addEventListener("click", e=>{ const b=e.target.closest("[data-proof]"); if(!b) return; const [sid,d]=b.dataset.proof.split("|"); S.week=mondayOf(d); openCell(sid,(parse(d).getDay()+6)%7); });
 $("#exportWk").onclick=exportWeek;
 $("#copyPrev").onclick=copyPrev;
 $("#addStaff").onclick=()=>openStaff(null);
@@ -790,11 +828,13 @@ function setSync(state){ const d=$("#syncDot"), t=$("#syncText"); d.className="d
   if(!db){ setSync("off"); $("#offline").hidden=false; renderAll(); return; }
   S.db=db; S.live=true; setSync("live");
   window.claude.use("downloads").then(x=>{ S.downloads=x; }).catch(()=>{});
+  window.claude.use("assets").then(x=>{ S.assets=x; if(x) rerender(); }).catch(()=>{});
   const onErr = e => { if(e && e.code==="revoked"){ setSync("off"); } };
   let tmr; const rerender=()=>{ clearTimeout(tmr); tmr=setTimeout(renderAll,60); };
   db.collection("staff").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.staff=o; rerender(); }, onErr);
   db.collection("weeks").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.weeks=o; rerender(); }, onErr);
   db.collection("requests").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.requests=o; rerender(); }, onErr);
+  db.collection("sickdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.sickdocs=o; rerender(); }, onErr);
   db.doc("config/holidays").onSnapshot(snap=>{ S.holidays = snap.exists ? (snap.data().items||[]) : []; rerender(); }, onErr);
 })();
 })();
