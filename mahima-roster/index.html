@@ -175,6 +175,8 @@ table.data{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums
 .panel h2{margin:0 0 10px;font:700 20px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .form{display:grid;gap:10px}
 .form label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.form .field{width:100%;min-width:0}
+[hidden]{display:none!important}
 .form .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .note{font-size:12px;color:var(--ink-3)}
 .msg{font-size:12.5px;padding:8px 10px;border-radius:6px}
@@ -240,12 +242,12 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
   </header>
 
   <nav class="tabs" role="tablist" id="tabs">
-    <button role="tab" data-tab="roster" aria-selected="true">Weekly roster</button>
+    <button role="tab" data-tab="roster" aria-selected="true">Roster &amp; holidays</button>
     <button role="tab" data-tab="leave" aria-selected="false">Leave balances</button>
     <button role="tab" data-tab="requests" aria-selected="false">Leave requests <span class="badge" id="reqBadge" hidden>0</span></button>
-    <button role="tab" data-tab="holidays" aria-selected="false">Public holidays</button>
     <button role="tab" data-tab="staff" aria-selected="false">Staff</button>
     <button role="tab" data-tab="docs" aria-selected="false">Contracts &amp; payslips</button>
+    <button role="tab" data-tab="pay" aria-selected="false">Payroll</button>
     <button role="tab" data-tab="sc" aria-selected="false">Service charge</button>
   </nav>
 
@@ -267,6 +269,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <div class="brush" id="brush"></div>
     <div id="rosterBody"></div>
     <div class="legend" id="legend"></div>
+    <div id="holBody" style="margin-top:8px"></div>
   </section>
 
   <!-- LEAVE -->
@@ -316,10 +319,6 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     </div>
   </section>
 
-  <!-- HOLIDAYS -->
-  <section id="tab-holidays" hidden>
-    <div id="holBody"></div>
-  </section>
 
   <!-- STAFF -->
   <section id="tab-docs" hidden>
@@ -347,12 +346,13 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <div id="scBody">
       <div class="panel" style="margin-bottom:14px">
         <h2>Monthly service charge</h2>
-        <p class="note" style="margin-top:0">Salary follows the contract. Service charge is paid on the 15th and split by grade: managers &amp; supervisors 100%, pre-opening staff 75%, staff hired in 2026 50%. Enter the month's total and each person's share is worked out as total × their grade ÷ everyone's grades added up.</p>
+        <p class="note" style="margin-top:0">Salary follows the contract. Service charge is paid on the 15th and split by grade: managers &amp; supervisors 100%, pre-opening staff 75%, staff hired in 2026 50%. Enter the month's total and each person's share is worked out from their grade. Grades stay hidden; click Edit grades to change one. Payslips show only the amount.</p>
         <div class="bar">
           <label class="note" for="scMonth">Month</label><input class="field" type="month" id="scMonth">
           <label class="note" for="scPool">Total service charge (Rp)</label><input class="field" id="scPool" inputmode="numeric" placeholder="e.g. 25.000.000" style="width:170px">
           <label class="note" for="scPay">Paid on</label><input class="field" type="date" id="scPay">
           <div class="grow"></div>
+          <button type="button" class="btn" id="scGrades">Edit grades</button>
           <button type="button" class="btn" id="scExport">Export CSV</button>
           <button type="button" class="btn primary" id="scSave">Save month</button>
         </div>
@@ -362,6 +362,25 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
       <div class="tablewrap"><table class="data" id="scTable"></table></div>
       <h2 class="sec">Saved months</h2>
       <div id="scHist"></div>
+    </div>
+  </section>
+
+  <section id="tab-pay" hidden>
+    <div id="payLocked" class="empty-state" hidden><b>Managers only</b>Only managers with edit access can see payroll.</div>
+    <div id="payBody">
+      <div class="panel" style="margin-bottom:14px">
+        <h2>Monthly payroll</h2>
+        <p class="note" style="margin-top:0">Salary and tax carry over from last month (from your payroll sheet). Service charge comes from the Service charge tab. Add any bonus or deduction, then make every payslip with one button. Changes save by themselves.</p>
+        <div class="bar">
+          <label class="note" for="prMonth">Month</label><input class="field" type="month" id="prMonth">
+          <div class="grow"></div>
+          <button type="button" class="btn" id="prDownload">Download all (one PDF)</button>
+          <button type="button" class="btn primary" id="prGen">Generate all payslips</button>
+        </div>
+        <div id="prNote"></div>
+      </div>
+      <div class="stats" id="payStats"></div>
+      <div class="tablewrap"><table class="data" id="prTable" style="min-width:1100px"></table></div>
     </div>
   </section>
 
@@ -375,6 +394,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
 <dialog id="staffDlg"><form method="dialog" class="dlg" id="staffForm"></form></dialog>
 <div class="toast" id="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 (() => {
 "use strict";
@@ -403,10 +423,10 @@ const S = {
   db:null, downloads:null, live:false,
   staff:{}, weeks:{}, requests:{}, holidays:[],
   week: mondayOf(todayISO()), tab:"roster", brush:null, dept:"", q:"",
-  sickdocs:{}, hrdocs:{}, assets:null, scGrades:null, scMonths:{},
+  sickdocs:{}, hrdocs:{}, assets:null, scGrades:null, scMonths:{}, paySal:null, payMonths:{},
   pending:{}, // weekId -> {sid: {cells, short, remark}}
 };
-try { const t = localStorage.getItem("mahima.tab"); if (t) S.tab = t; } catch(e){}
+try { const t = localStorage.getItem("mahima.tab"); if (t && document.getElementById("tab-"+t)) S.tab = t; } catch(e){}
 
 /* ---------- date helpers ---------- */
 function todayISO(){ const d=new Date(); return iso(d); }
@@ -735,7 +755,7 @@ function renderHolidays(){
       <div class="d2">${h.date<today?"Passed":diff===0?"Today":"In "+diff+" day"+(diff>1?"s":"")}${h.note?" · "+esc(h.note):""}</div></div></div>`; };
   const up=hs.filter(h=>h.date>=today), past=hs.filter(h=>h.date<today);
   const grp=(t,f)=>{ const x=up.filter(f); return x.length?`<h2 class="sec">${t}</h2><div class="hgrid">${x.map(card).join("")}</div>`:""; };
-  $("#holBody").innerHTML = hs.length ? `<p class="note" style="margin-top:0">Each contract staff member gets 5 company PH days a year after 1 year of service. Type <b>PH</b> in the roster on the day they take it.</p>`
+  $("#holBody").innerHTML = hs.length ? `<h2 class="sec">Public holidays</h2><p class="note" style="margin-top:0">Each contract staff member gets 5 company PH days a year after 1 year of service. Type <b>PH</b> in the roster on the day they take it.</p>`
     + grp("Hindu staff · next 12 months", h=>/Hindu|Everyone/.test(h.for))
     + grp("Catholic staff · next 12 months", h=>/Catholic|Fransiska|Everyone/.test(h.for))
     + (past.length?`<h2 class="sec">Already passed</h2><div class="hgrid">${past.map(card).join("")}</div>`:"")
@@ -823,6 +843,145 @@ function docsSection(id){
       <div class="row"><input class="field" type="file" id="dFile" accept="application/pdf,image/png,image/jpeg,image/webp" style="flex:1;min-width:0"><button type="button" class="btn primary" id="dUpload">Upload</button></div>
       <div id="dMsg"></div></div>`:'<div class="note" style="margin-top:6px">Only managers with edit access can upload documents.</div>'}</div>`;
 }
+/* ---------- payroll & payslips ---------- */
+let payDraft = null, payDraftMonth = null, paySaveT = null, payBusy = false;
+function prevMonthOf(m){ const [y,mm]=m.split("-").map(Number); return iso(new Date(y,mm-2,1)).slice(0,7); }
+function workDaysInMonth(sid, m){ const [y,mm]=m.split("-").map(Number), last=new Date(y,mm,0).getDate(); let n=0; for(let d=1; d<=last; d++){ if(isWork(codeOn(sid, m+"-"+String(d).padStart(2,"0")))) n++; } return n; }
+function payStaff(m){ return staffList().filter(s=>s.start<=m+"-31"); }
+function payDefaults(s, m){
+  const prev = S.payMonths[prevMonthOf(m)]?.rows?.[s.id] || {}, def = (S.paySal||{})[s.id] || {};
+  const type = prev.type || def.type || "monthly";
+  return { type, basic: prev.basic ?? def.basic ?? 0, rate: prev.rate ?? def.rate ?? 0, days: type==="daily" ? workDaysInMonth(s.id,m) : 0,
+    bonus:0, bonusNote: def.bonusNote||"", tax: prev.tax ?? def.tax ?? 0, deduct:0, deductNote:"", bank: prev.bank ?? def.bank ?? "", bankName: prev.bankName ?? def.bankName ?? "" };
+}
+function payRow(s, m){
+  const r = {...payDefaults(s,m), ...(payDraft?.rows?.[s.id]||{})};
+  r.sc = S.scMonths[m]?.rows?.[s.id]?.amount || 0;  // service charge comes from the Service charge tab
+  return r;
+}
+const payBase = r => r.type==="daily" ? r.days*r.rate : r.basic;
+const payGross = r => payBase(r) + r.sc + r.bonus;
+const payNet = r => payGross(r) - r.tax - r.deduct;
+function loadPayDraft(m){
+  if(payDraftMonth===m) return;
+  payDraftMonth=m; const saved=S.payMonths[m];
+  payDraft = saved ? JSON.parse(JSON.stringify(saved)) : {month:m, rows:{}};
+}
+function editPay(sid, field, value){
+  const s=S.staff[sid], m=payDraftMonth; const cur=payRow({id:sid,...s}, m); delete cur.sc;
+  cur[field]=value; payDraft.rows[sid]=cur;
+  clearTimeout(paySaveT); paySaveT=setTimeout(savePayDraft, 700);
+  renderPayrollTotals();
+}
+async function savePayDraft(){
+  clearTimeout(paySaveT); if(!S.db||!payDraft) return;
+  const body={...payDraft, updatedAt:new Date().toISOString()}; S.payMonths[payDraft.month]=body;
+  try{ await S.db.doc("payroll/"+payDraft.month).set(body); }catch(err){ handleWriteError(err); }
+}
+function renderPayrollTotals(){
+  const m=payDraftMonth; if(!m) return; const rows=payStaff(m).map(s=>payRow(s,m));
+  const sum=f=>rows.reduce((n,r)=>n+f(r),0);
+  $("#payStats").innerHTML=[[rp(sum(payBase)),"Salaries"],[rp(sum(r=>r.sc)),"Service charge"],[rp(sum(r=>r.bonus)),"Bonus / extra"],[rp(sum(r=>r.tax+r.deduct)),"Tax & deductions"],[rp(sum(payNet)),"Total net pay"]]
+    .map(([n,l])=>`<div class="stat"><div class="n" style="font-size:22px">${n}</div><div class="l">${l}</div></div>`).join("");
+  payStaff(m).forEach(s=>{ const c=document.querySelector(`[data-net="${CSS.escape(s.id)}"]`); if(c) c.textContent=rp(payNet(payRow(s,m))); });
+}
+function renderPayroll(){
+  const locked = !S.assets && S.paySal===null;
+  $("#payLocked").hidden=!locked; $("#payBody").hidden=locked; if(locked) return;
+  if(!$("#prMonth").value){ const t=todayISO(); $("#prMonth").value = Number(t.slice(8))>=20 ? t.slice(0,7) : prevMonth(); }
+  const m=$("#prMonth").value; loadPayDraft(m);
+  const scSaved=!!S.scMonths[m];
+  $("#prNote").innerHTML = (scSaved?"":`<div class="msg warn">No service charge saved for ${fmtMonth(m)} yet. Save it on the Service charge tab and it appears here.</div>`)
+    + (payDraft.generatedAt?`<div class="msg ok" style="margin-top:6px">Payslips generated ${fmt(payDraft.generatedAt.slice(0,10))}. Generate again after changes to replace them.</div>`:"");
+  const num=(sid,f,v,w)=>`<input class="field" inputmode="numeric" data-pay="${esc(sid)}" data-f="${f}" value="${v?Number(v).toLocaleString("id-ID"):""}" placeholder="0" style="width:${w||120}px;text-align:right">`;
+  const txt=(sid,f,v,ph)=>`<input class="field" data-pay="${esc(sid)}" data-f="${f}" value="${esc(v||"")}" placeholder="${ph}" style="width:150px;margin-top:4px">`;
+  $("#prTable").innerHTML=`<thead><tr><th>Staff</th><th>Salary</th><th class="num">Service charge</th><th>Bonus / extra</th><th>Tax (PPh 21)</th><th>Other deductions</th><th class="num">Net pay</th><th></th></tr></thead><tbody>${payStaff(m).map(s=>{ const r=payRow(s,m);
+    return `<tr><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div><input class="field" data-pay="${esc(s.id)}" data-f="bank" value="${esc(r.bank)}" placeholder="Bank account no." style="width:150px;margin-top:4px"></td>
+    <td>${r.type==="daily"?`<div class="row" style="gap:4px;align-items:center">${num(s.id,"days",r.days,56)}<span class="note">days ×</span>${num(s.id,"rate",r.rate,100)}</div><div class="note">Daily worker · days counted from roster</div>`:num(s.id,"basic",r.basic)}</td>
+    <td class="num">${r.sc?rp(r.sc):'<span class="note">—</span>'}</td>
+    <td>${num(s.id,"bonus",r.bonus)}<br>${txt(s.id,"bonusNote",r.bonusNote,"What for")}</td>
+    <td>${num(s.id,"tax",r.tax)}</td>
+    <td>${num(s.id,"deduct",r.deduct)}<br>${txt(s.id,"deductNote",r.deductNote,"What for")}</td>
+    <td class="num" style="white-space:nowrap"><b data-net="${esc(s.id)}">${rp(payNet(r))}</b></td>
+    <td><button type="button" class="btn small" data-preview="${esc(s.id)}">View</button></td></tr>`; }).join("")}</tbody>`;
+  $("#prGen").disabled = !S.assets || payBusy;
+  renderPayrollTotals();
+}
+function slipLines(s, m, r){
+  const earn=[[r.type==="daily"?`Daily wage (${r.days} days × ${rp(r.rate)})`:"Basic salary", payBase(r)]];
+  if(r.sc) earn.push(["Service charge", r.sc]);
+  if(r.bonus) earn.push(["Bonus / extra"+(r.bonusNote?" – "+r.bonusNote:""), r.bonus]);
+  const ded=[]; if(r.tax) ded.push(["Income tax (PPh 21)", r.tax]); if(r.deduct) ded.push(["Other deductions"+(r.deductNote?" – "+r.deductNote:""), r.deduct]);
+  return {earn, ded};
+}
+function drawPayslip(doc, s, m, r){
+  const W=210, L=16, R=W-16; const {earn,ded}=slipLines(s,m,r);
+  doc.setFillColor(15,94,79); doc.rect(0,0,W,34,"F");
+  doc.setFillColor(211,224,74); doc.circle(R-4,17,7,"F");
+  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text("MAHIMA", L, 17);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text("Tennis, Padel & Gym", L, 24);
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("PAYSLIP", R-16, 15, {align:"right"});
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(fmtMonth(m), R-16, 22, {align:"right"});
+  doc.setTextColor(22,33,30); let y=48;
+  const info=[["Name", r.bankName||s.name],["Position", s.title||""],["Department", s.dept||""],["Contract", s.contract==="DW"?"Daily worker":"Staff contract"],["Start date", fmt(s.start)],["Bank account", r.bank||"—"]];
+  doc.setFontSize(9.5);
+  info.forEach(([k,v],i)=>{ const x = i%2? 110 : L, yy = y + Math.floor(i/2)*8; doc.setTextColor(110,125,120); doc.text(k.toUpperCase(), x, yy); doc.setTextColor(22,33,30); doc.text(String(v), x+30, yy); });
+  y += 30;
+  const section=(title, rows, total, label)=>{
+    doc.setFillColor(234,238,236); doc.rect(L, y-5, R-L, 8, "F"); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text(title, L+3, y); y+=9;
+    doc.setFont("helvetica","normal");
+    rows.forEach(([k,v])=>{ const lines=doc.splitTextToSize(k, 120); doc.text(lines, L+3, y); doc.text(rp(v), R-3, y, {align:"right"}); y += 6*lines.length; });
+    if(!rows.length){ doc.setTextColor(110,125,120); doc.text("None", L+3, y); doc.setTextColor(22,33,30); y+=6; }
+    doc.setDrawColor(182,193,189); doc.line(L, y-3, R, y-3); doc.setFont("helvetica","bold"); doc.text(label, L+3, y+2); doc.text(rp(total), R-3, y+2, {align:"right"}); y+=14;
+  };
+  section("EARNINGS", earn, payGross(r), "Gross pay");
+  section("DEDUCTIONS", ded, r.tax+r.deduct, "Total deductions");
+  doc.setFillColor(15,94,79); doc.rect(L, y-6, R-L, 16, "F"); doc.setTextColor(255,255,255); doc.setFontSize(12); doc.text("NET PAY", L+4, y+4); doc.setFontSize(15); doc.text(rp(payNet(r)), R-4, y+4, {align:"right"});
+  doc.setTextColor(110,125,120); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+  doc.text("This payslip is confidential. Questions about your pay? Ask your manager.", L, 282);
+  doc.text("Generated " + fmt(todayISO()), R, 282, {align:"right"});
+}
+function slipHTML(s, m, r){
+  const {earn,ded}=slipLines(s,m,r); const row=([k,v])=>`<div class="row" style="justify-content:space-between"><span>${esc(k)}</span><b>${rp(v)}</b></div>`;
+  return `<h3>Payslip · ${fmtMonth(m)}</h3><div class="meta">${esc(r.bankName||s.name)} · ${esc(s.title||"")} · Bank ${esc(r.bank||"—")}</div>
+    <div class="note">EARNINGS</div>${earn.map(row).join("")}${row(["Gross pay",payGross(r)])}
+    <div class="note">DEDUCTIONS</div>${ded.length?ded.map(row).join(""):'<div class="note">None</div>'}
+    <div class="msg ok" style="display:flex;justify-content:space-between"><b>NET PAY</b><b>${rp(payNet(r))}</b></div>
+    <div class="foot"><span></span><button class="btn" value="cancel">Close</button></div>`;
+}
+async function generateAllPayslips(){
+  const m=payDraftMonth; if(!window.jspdf){ toast("The PDF maker didn't load. Reload the page and try again."); return; }
+  if(!S.assets){ toast("Only managers with edit access can generate payslips."); return; }
+  await savePayDraft();
+  const list=payStaff(m).filter(s=>payGross(payRow(s,m))>0);
+  if(!list.length){ toast("Nobody has pay entered for "+fmtMonth(m)); return; }
+  payBusy=true; const btn=$("#prGen"); let done=0, failed=0;
+  for(const s of list){
+    btn.textContent=`Making payslips… ${done+1} / ${list.length}`;
+    try{
+      const doc=new window.jspdf.jsPDF({unit:"mm", format:"a4"}); drawPayslip(doc, s, m, payRow(s,m));
+      const blob=doc.output("blob"); const file=new File([blob], `Payslip_${s.name.replace(/[^A-Za-z0-9]+/g,"_")}_${m}.pdf`, {type:"application/pdf"});
+      const up=await S.assets.upload(file, {type:"application/pdf"});
+      for(const [id,d] of Object.entries(S.hrdocs)) if(d.staffId===s.id && d.kind==="payslip" && d.month===m && d.generated){ await S.db.doc("hrdocs/"+id).delete().catch(()=>{}); await S.assets.delete(d.assetId).catch(()=>{}); delete S.hrdocs[id]; }
+      const docId=s.id+"_"+m+"_slip";
+      const body={staffId:s.id, kind:"payslip", month:m, generated:true, from:"", until:"", note:"Net "+rp(payNet(payRow(s,m))), assetId:up.id, fileName:file.name, uploadedAt:new Date().toISOString()};
+      await S.db.doc("hrdocs/"+docId).set(body); S.hrdocs[docId]=body; done++;
+    }catch(err){ failed++; }
+  }
+  payDraft.generatedAt=new Date().toISOString(); await savePayDraft();
+  payBusy=false; btn.textContent="Generate all payslips"; renderAll();
+  toast(failed? `${done} payslips made, ${failed} failed. Try again for the rest.` : `${done} payslips made for ${fmtMonth(m)}`);
+}
+async function downloadAllPayslips(){
+  const m=payDraftMonth; if(!window.jspdf){ toast("The PDF maker didn't load. Reload the page and try again."); return; }
+  const list=payStaff(m).filter(s=>payGross(payRow(s,m))>0); if(!list.length){ toast("Nobody has pay entered for "+fmtMonth(m)); return; }
+  const doc=new window.jspdf.jsPDF({unit:"mm", format:"a4"});
+  list.forEach((s,i)=>{ if(i) doc.addPage(); drawPayslip(doc, s, m, payRow(s,m)); });
+  const name=`Mahima_Payslips_${m}.pdf`;
+  if(!S.downloads){ toast("Downloads aren't available in this view"); return; }
+  try{ await S.downloads.save({filename:name, data:doc.output("arraybuffer")}); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't save the file"); }
+}
+
 /* ---------- service charge ---------- */
 const SC_LEADS = ["sukma","fransiska","yudha","leoni","komang"]; // managers & supervisors: 100%
 const SC_PREOPEN_EXCEPT = ["intan"];                               // hired 2026 but counted as pre-opening: 75%
@@ -835,7 +994,7 @@ function gradeOf(s){ const g=S.scGrades&&S.scGrades[s.id]; return g==null ? defa
 function parseRp(v){ return Number(String(v||"").replace(/[^0-9]/g,""))||0; }
 const rp = n => "Rp " + Math.round(n).toLocaleString("id-ID");
 function nextMonth15(m){ const [y,mm]=m.split("-").map(Number); const d=new Date(y,mm,15); return iso(d); }
-let scLoaded=null;
+let scLoaded=null, scShowGrades=false;
 function scCompute(){
   const m=$("#scMonth").value, pool=parseRp($("#scPool").value), pay=$("#scPay").value;
   const list=staffList().filter(s=>s.start<=m+"-31");
@@ -852,14 +1011,14 @@ function renderSC(keepInputs){
     $("#scPool").value = saved? saved.pool.toLocaleString("id-ID") : ""; $("#scPay").value = saved? saved.payDate : nextMonth15(m); }
   const {pool,rows,pts}=scCompute(), paid=rows.reduce((n,r)=>n+r.amt,0), saved=S.scMonths[m];
   const cnt=g=>rows.filter(r=>r.g===g).length;
-  $("#scStats").innerHTML=[[pool?rp(pool):"—","Total for "+fmtMonth(m)],[pts? rp(pool*100/pts):"—","One 100% share"],[cnt(100)+" · "+cnt(75)+" · "+cnt(50),"Staff at 100% · 75% · 50%"],[pool?rp(pool-paid):"—","Left over from rounding"]]
+  $("#scStats").innerHTML=[[pool?rp(pool):"—","Total for "+fmtMonth(m)],[rows.length,"Staff receiving service charge"],[pool?rp(pool-paid):"—","Left over from rounding"]]
     .map(([n,l])=>`<div class="stat"><div class="n" style="font-size:24px">${n}</div><div class="l">${l}</div></div>`).join("");
   const gsel=(s,g)=>`<select class="field" data-grade="${esc(s.id)}" aria-label="Grade for ${esc(s.name)}">${[100,75,50,0].map(v=>`<option value="${v}" ${v===g?"selected":""}>${v}%${v===0?" (none)":""}</option>`).join("")}</select>`;
-  $("#scTable").innerHTML=`<thead><tr><th>Staff</th><th>Contract</th><th>Started</th><th>Grade</th><th class="num">Share (Rp)</th>${saved?'<th class="num">Saved</th>':""}</tr></thead><tbody>${rows.map(r=>`<tr>
+  $("#scTable").innerHTML=`<thead><tr><th>Staff</th><th>Contract</th><th>Started</th>${scShowGrades?"<th>Grade</th>":""}<th class="num">Share (Rp)</th>${saved?'<th class="num">Saved</th>':""}</tr></thead><tbody>${rows.map(r=>`<tr>
     <td><b>${esc(r.s.name)}</b><div class="note">${esc(r.s.title||"")}</div></td><td><span class="pill mute">${esc(r.s.contract)}</span></td><td>${fmt(r.s.start)}</td>
-    <td>${gsel(r.s,r.g)}${r.g!==defaultGrade(r.s)?'<div class="note">changed by hand</div>':""}</td>
+    ${scShowGrades?`<td>${gsel(r.s,r.g)}${r.g!==defaultGrade(r.s)?'<div class="note">changed by hand</div>':""}</td>`:""}
     <td class="num"><b>${pool?rp(r.amt):"—"}</b></td>${saved?`<td class="num">${saved.rows[r.s.id]?rp(saved.rows[r.s.id].amount):"—"}</td>`:""}</tr>`).join("")}
-    <tr><td colspan="4"><b>Total</b></td><td class="num"><b>${pool?rp(paid):"—"}</b></td>${saved?`<td class="num">${rp(Object.values(saved.rows).reduce((n,r)=>n+r.amount,0))}</td>`:""}</tr></tbody>`;
+    <tr><td colspan="${scShowGrades?4:3}"><b>Total</b></td><td class="num"><b>${pool?rp(paid):"—"}</b></td>${saved?`<td class="num">${rp(Object.values(saved.rows).reduce((n,r)=>n+r.amount,0))}</td>`:""}</tr></tbody>`;
   const hist=Object.values(S.scMonths).sort((a,b)=>b.month.localeCompare(a.month));
   $("#scHist").innerHTML = hist.length? `<div class="list">${hist.map(h=>`<div class="req"><div><div class="t">${fmtMonth(h.month)} · ${rp(h.pool)}</div><div class="d">Paid on ${fmt(h.payDate)} · ${Object.keys(h.rows).length} staff · saved ${fmt(h.savedAt.slice(0,10))}</div></div></div>`).join("")}</div>` : '<div class="note">Months you save show here.</div>';
 }
@@ -985,12 +1144,12 @@ function fillSelects(){
 }
 function renderAll(){
   fillSelects();
-  if(S.tab==="roster"){ renderBrush(); renderRoster(); }
+  if(S.tab==="roster"){ renderBrush(); renderRoster(); renderHolidays(); }
   if(S.tab==="leave") renderLeave();
-  if(S.tab==="holidays") renderHolidays();
   if(S.tab==="staff") renderStaff();
   if(S.tab==="docs") renderDocs();
   if(S.tab==="sc") renderSC();
+  if(S.tab==="pay") renderPayroll();
   renderRequests();
 }
 $("#tabs").addEventListener("click", e=>{ const b=e.target.closest("[data-tab]"); if(b) setTab(b.dataset.tab); });
@@ -1008,6 +1167,13 @@ $("#brush").addEventListener("click", e=>{ const b=e.target.closest("[data-brush
 $("#rosterBody").addEventListener("click", e=>{ const b=e.target.closest(".cellbtn"); if(!b) return; const sid=b.dataset.sid, day=Number(b.dataset.day); if(S.brush!==null) paint(sid,day); else openCell(sid,day); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.brush!==null && !document.querySelector("dialog[open]")){ S.brush=null; renderBrush(); } });
 $("#leaveTable").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
+$("#prMonth").addEventListener("change", async ()=>{ await savePayDraft(); renderPayroll(); });
+$("#prTable").addEventListener("input", e=>{ const sid=e.target.dataset.pay, f=e.target.dataset.f; if(!sid) return;
+  if(["bank","bonusNote","deductNote"].includes(f)) editPay(sid,f,e.target.value);
+  else { const n=parseRp(e.target.value); e.target.value = n? n.toLocaleString("id-ID") : ""; editPay(sid,f,n); } });
+$("#prTable").addEventListener("click", e=>{ const b=e.target.closest("[data-preview]"); if(!b) return; const s={id:b.dataset.preview,...S.staff[b.dataset.preview]}; $("#cellForm").innerHTML=slipHTML(s,payDraftMonth,payRow(s,payDraftMonth)); $("#cellDlg").showModal(); });
+$("#prGen").addEventListener("click", ()=>{ if(!payBusy) generateAllPayslips(); });
+$("#prDownload").addEventListener("click", downloadAllPayslips);
 $("#scMonth").addEventListener("change", ()=>{ scLoaded=null; renderSC(); });
 $("#scPool").addEventListener("input", e=>{ const n=parseRp(e.target.value); e.target.value = n? n.toLocaleString("id-ID") : ""; renderSC(true); });
 $("#scTable").addEventListener("change", async e=>{
@@ -1021,9 +1187,10 @@ $("#scSave").addEventListener("click", async ()=>{
   S.scMonths[m]=body; renderSC(true);
   try{ await S.db.doc("servicecharge/"+m).set(body); toast(fmtMonth(m)+" service charge saved"); }catch(err){ handleWriteError(err); }
 });
+$("#scGrades").addEventListener("click", e=>{ scShowGrades=!scShowGrades; e.target.textContent=scShowGrades?"Hide grades":"Edit grades"; renderSC(true); });
 $("#scExport").addEventListener("click", async ()=>{
   const {m,pool,pay,rows}=scCompute(); const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
-  const csv=[["Month","Paid on","Staff","Title","Grade %","Amount (Rp)"].map(q).join(","), ...rows.map(r=>[fmtMonth(m),pay,r.s.name,r.s.title,r.g,r.amt].map(q).join(",")), ["","","Total","","",rows.reduce((n,r)=>n+r.amt,0)].map(q).join(",")].join("\r\n");
+  const csv=[["Month","Paid on","Staff","Title","Amount (Rp)"].map(q).join(","), ...rows.map(r=>[fmtMonth(m),pay,r.s.name,r.s.title,r.amt].map(q).join(",")), ["","","Total","",rows.reduce((n,r)=>n+r.amt,0)].map(q).join(",")].join("\r\n");
   const name=`mahima-service-charge-${m}.csv`;
   if(!S.downloads){ try{ await navigator.clipboard.writeText(csv); toast("CSV copied to your clipboard"); }catch(e){ toast("Export isn't available in this view"); } return; }
   try{ await S.downloads.save({filename:name, data:csv}); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't export the file"); }
@@ -1069,6 +1236,7 @@ function setSync(state){ const d=$("#syncDot"), t=$("#syncText"); d.className="d
   db.collection("staff").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.staff=o; rerender(); }, onErr);
   db.collection("weeks").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.weeks=o; rerender(); }, onErr);
   db.collection("requests").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.requests=o; rerender(); }, onErr);
+  db.collection("payroll").onSnapshot(snap=>{ const m={}; let sal=null; snap.docs.forEach(d=>{ if(d.id==="salaries") sal=d.data().staff||{}; else m[d.id]=d.data(); }); S.paySal=sal; S.payMonths=m; if(payDraftMonth && !paySaveT && m[payDraftMonth]) { payDraftMonth=null; } rerender(); }, onErr);
   db.collection("servicecharge").onSnapshot(snap=>{ const m={}; let g=null; snap.docs.forEach(d=>{ if(d.id==="grades") g=d.data().grades||{}; else m[d.id]=d.data(); }); S.scGrades=g; S.scMonths=m; rerender(); }, onErr);
   db.collection("hrdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.hrdocs=o; rerender(); }, onErr);
   db.collection("sickdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.sickdocs=o; rerender(); }, onErr);
