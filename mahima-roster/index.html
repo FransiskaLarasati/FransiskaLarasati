@@ -245,7 +245,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <button role="tab" data-tab="requests" aria-selected="false">Leave requests <span class="badge" id="reqBadge" hidden>0</span></button>
     <button role="tab" data-tab="holidays" aria-selected="false">Public holidays</button>
     <button role="tab" data-tab="staff" aria-selected="false">Staff</button>
-    <button role="tab" data-tab="docs" aria-selected="false">Contracts</button>
+    <button role="tab" data-tab="docs" aria-selected="false">Contracts &amp; payslips</button>
   </nav>
 
   <div class="banner" id="offline" hidden>Live data isn't available in this view. Open the roster from its claude.ai link to see and edit the shared schedule.</div>
@@ -324,6 +324,20 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
   <section id="tab-docs" hidden>
     <div class="bar"><div class="grow note">Employment contracts, Daily Worker agreements and offer letters. Only managers with edit access can see or upload them. Click a person to upload.</div></div>
     <div class="stats" id="docStats"></div>
+    <div class="panel" id="bulkPanel" style="margin-bottom:16px">
+      <h2>Upload many files at once</h2>
+      <p class="note" style="margin-top:0">Pick all the files together. Each file is matched to a staff member by the name in the file name (e.g. <i>Payslip_Widia_Sep2026.pdf</i> or <i>Contract Kadek Setiana.pdf</i>). Check the matches, then upload.</p>
+      <div class="bar">
+        <select class="field" id="bKind" aria-label="Document type"></select>
+        <input class="field" type="month" id="bMonth" aria-label="Payslip month">
+        <input class="field" type="file" id="bFiles" multiple accept="application/pdf,image/png,image/jpeg,image/webp" style="flex:1;min-width:0">
+      </div>
+      <div id="bRows"></div>
+    </div>
+    <h2 class="sec" style="margin-top:0">Payslips</h2>
+    <div class="bar"><label class="note" for="pMonth">Month</label><input class="field" type="month" id="pMonth"><div class="grow"></div><span class="note" id="payCount"></span></div>
+    <div class="tablewrap" style="margin-bottom:16px"><table class="data" id="payTable"></table></div>
+    <h2 class="sec">Contracts &amp; agreements</h2>
     <div class="tablewrap"><table class="data" id="docTable"></table></div>
   </section>
 
@@ -716,7 +730,51 @@ function renderStaff(){
       <div class="note">AL ${t[s.id].AL} · EO ${t[s.id].EO} · PH ${t[s.id].PH} · Sick/DC ${t[s.id].SICK}</div></button>`).join("")}</div>`; }).join("");
 }
 let staffEdit=null;
-const DOC_KINDS = {contract:"Employment contract (SC)", dw:"Daily Worker agreement (DW)", offer:"Employment offer letter", other:"Other document"};
+const DOC_KINDS = {contract:"Employment contract (SC)", dw:"Daily Worker agreement (DW)", offer:"Employment offer letter", payslip:"Payslip", other:"Other document / attachment"};
+function prevMonth(){ const d=parse(todayISO()); d.setDate(1); d.setMonth(d.getMonth()-1); return iso(d).slice(0,7); }
+function fmtMonth(m){ if(!m) return ""; const [y,mm]=m.split("-"); return MONTHS[Number(mm)-1]+" "+y; }
+S.payMonth = prevMonth();
+let bulk = []; // {file, sid, until, status}
+const norm = t => " "+String(t).toLowerCase().replace(/[^a-z0-9]+/g," ").trim()+" ";
+function matchStaff(fileName){
+  const f = norm(fileName.replace(/\.[a-z0-9]+$/i,""));
+  const hits = staffList().filter(s=>f.includes(norm(s.name))).sort((a,b)=>b.name.length-a.name.length);
+  return hits[0]?.id || "";
+}
+function mimeOf(f){ if(f.type) return f.type; const ext=(f.name.split(".").pop()||"").toLowerCase(); return {pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[ext]||""; }
+function renderBulk(){
+  const panel=$("#bulkPanel"); panel.hidden = !S.assets;
+  if(!S.assets) return;
+  const kSel=$("#bKind"); if(!kSel.options.length){ kSel.innerHTML=Object.entries(DOC_KINDS).map(([k,v])=>`<option value="${k}">${v}</option>`).join(""); kSel.value="payslip"; }
+  if(!$("#bMonth").value) $("#bMonth").value=S.payMonth;
+  $("#bMonth").hidden = kSel.value!=="payslip";
+  const isContract = ["contract","dw","offer"].includes(kSel.value);
+  const opts = sid => `<option value="">Choose staff…</option>`+staffList().map(s=>`<option value="${esc(s.id)}" ${s.id===sid?"selected":""}>${esc(s.name)}</option>`).join("");
+  if(!bulk.length){ $("#bRows").innerHTML=""; return; }
+  const ready = bulk.filter(b=>b.sid && b.status!=="done").length;
+  $("#bRows").innerHTML = `<div class="tablewrap"><table class="data" style="min-width:560px"><thead><tr><th>File</th><th>Staff</th>${isContract?"<th>Valid until</th>":""}<th>Status</th></tr></thead><tbody>${bulk.map((b,i)=>`<tr>
+    <td>${esc(b.file.name)}<div class="note">${Math.round(b.file.size/1024)} KB</div></td>
+    <td><select class="field" data-bsid="${i}" ${b.status==="done"?"disabled":""}>${opts(b.sid)}</select></td>
+    ${isContract?`<td><input class="field" type="date" data-buntil="${i}" value="${esc(b.until||"")}" ${b.status==="done"?"disabled":""}></td>`:""}
+    <td>${b.status==="done"?'<span class="pill ok">Uploaded</span>':b.status==="busy"?'<span class="pill warn">Uploading…</span>':b.status?`<span class="pill bad">${esc(b.status)}</span>`:b.sid?'<span class="pill mute">Ready</span>':'<span class="pill warn">Pick staff</span>'}</td></tr>`).join("")}</tbody></table></div>
+    <div class="bar" style="margin-top:10px"><button type="button" class="btn primary" id="bGo" ${ready?"":"disabled"}>Upload ${ready} file${ready===1?"":"s"}${kSel.value==="payslip"?" as "+fmtMonth($("#bMonth").value)+" payslips":""}</button><button type="button" class="btn" id="bClear">Clear list</button></div>`;
+}
+async function runBulk(){
+  const kind=$("#bKind").value, month=$("#bMonth").value;
+  if(kind==="payslip" && !month){ toast("Choose the payslip month first"); return; }
+  for(const b of bulk){
+    if(!b.sid || b.status==="done") continue;
+    b.status="busy"; renderBulk();
+    try{
+      const type=mimeOf(b.file); const up=await S.assets.upload(b.file, type?{type}:undefined);
+      const docId=b.sid+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      const body={staffId:b.sid, kind, from:"", until:b.until||"", month:kind==="payslip"?month:"", note:"", assetId:up.id, fileName:b.file.name, uploadedAt:new Date().toISOString()};
+      await S.db.doc("hrdocs/"+docId).set(body); S.hrdocs[docId]=body; b.status="done";
+    }catch(err){ const c=err&&err.code; b.status = c==="unsupported_type"?"Not a PDF or photo":c==="too_large"?"Over 20 MB":c==="quota_exceeded"?"Storage full":c==="invalid_argument"?"No edit access":"Failed, try again"; }
+    renderBulk();
+  }
+  const n=bulk.filter(b=>b.status==="done").length; toast(n+" file"+(n===1?"":"s")+" uploaded"); renderAll();
+}
 function docsOf(sid){ return Object.entries(S.hrdocs).map(([id,d])=>({id,...d})).filter(d=>d.staffId===sid).sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||"")); }
 function mainDoc(s){ const want = s.contract==="DW" ? "dw" : "contract"; return docsOf(s.id).find(d=>d.kind===want) || null; }
 function docStatus(s){
@@ -731,17 +789,28 @@ function docsSection(id){
   const list=docsOf(id);
   return `<div><div class="note" style="margin-bottom:6px">Contracts &amp; documents (${list.length}) · managers only</div>
     <div class="list">${list.length?list.map(d=>`<div class="req"><div><div class="t">${esc(DOC_KINDS[d.kind]||d.kind)}</div>
-      <div class="d">${d.from?fmt(d.from):"—"}${d.until?" – "+fmt(d.until):""}${d.note?" · "+esc(d.note):""}</div>
+      <div class="d">${d.kind==="payslip"?fmtMonth(d.month):(d.from?fmt(d.from):"—")+(d.until?" – "+fmt(d.until):"")}${d.note?" · "+esc(d.note):""}</div>
       <div class="d"><a href="/_blob/${esc(d.assetId)}" target="_blank" rel="noopener">Open ${esc(d.fileName||"file")}</a></div></div>
       <div class="acts">${S.assets?`<button type="button" class="btn small danger" data-deldoc="${esc(d.id)}">Delete</button>`:""}</div></div>`).join(""):'<span class="note">No documents yet.</span>'}</div>
     ${S.assets?`<div class="proof" style="margin-top:10px">
       <div class="row"><select class="field" id="dKind" aria-label="Document type">${Object.entries(DOC_KINDS).map(([k,v])=>`<option value="${k}" ${(S.staff[id].contract==="DW"?"dw":"contract")===k?"selected":""}>${v}</option>`).join("")}</select></div>
-      <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label>Valid from<input class="field" type="date" id="dFrom"></label><label>Valid until (optional)<input class="field" type="date" id="dUntil"></label></div>
+      <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label>Valid from (payslip: any day in its month)<input class="field" type="date" id="dFrom"></label><label>Valid until (optional)<input class="field" type="date" id="dUntil"></label></div>
       <input class="field" id="dNote" placeholder="Note, e.g. 1-year contract, salary review Jan">
       <div class="row"><input class="field" type="file" id="dFile" accept="application/pdf,image/png,image/jpeg,image/webp" style="flex:1;min-width:0"><button type="button" class="btn primary" id="dUpload">Upload</button></div>
       <div id="dMsg"></div></div>`:'<div class="note" style="margin-top:6px">Only managers with edit access can upload documents.</div>'}</div>`;
 }
+function renderPayslips(){
+  if(!$("#pMonth").value) $("#pMonth").value=S.payMonth;
+  const m=$("#pMonth").value, list=staffList();
+  const slips=Object.values(S.hrdocs).filter(d=>d.kind==="payslip" && d.month===m);
+  const have=list.filter(s=>slips.some(d=>d.staffId===s.id)).length;
+  $("#payCount").textContent = `${have} of ${list.length} payslips uploaded for ${fmtMonth(m)}`;
+  $("#payTable").innerHTML=`<thead><tr><th>Staff</th><th>Contract</th><th>${esc(fmtMonth(m))} payslip</th></tr></thead><tbody>${list.map(s=>{ const mine=slips.filter(d=>d.staffId===s.id);
+    return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td><td><span class="pill mute">${esc(s.contract)}</span></td>
+    <td>${mine.length?mine.map(d=>`<a href="/_blob/${esc(d.assetId)}" target="_blank" rel="noopener">${esc(d.fileName||"Open")}</a>`).join(" · "):'<span class="pill warn">Missing</span>'}</td></tr>`;}).join("")}</tbody>`;
+}
 function renderDocs(){
+  renderBulk(); renderPayslips();
   const list=staffList(), sts=list.map(s=>({s,st:docStatus(s),d:mainDoc(s),offer:docsOf(s.id).find(x=>x.kind==="offer")}));
   const c=l=>sts.filter(x=>x.st.lvl===l).length;
   $("#docStats").innerHTML=[[c("ok")+" / "+list.length,"Contracts or DW agreements on file"],[c("warn"),"Ending within 30 days"],[c("bad"),"Missing or expired"],[Object.keys(S.hrdocs).length,"Documents stored"]]
@@ -792,7 +861,7 @@ $("#staffForm").addEventListener("click", async e=>{
       let type=f.type; if(!type){ const ext=(f.name.split(".").pop()||"").toLowerCase(); type={pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[ext]||""; }
       const up=await S.assets.upload(f, type?{type}:undefined);
       const docId=id+"_"+Date.now().toString(36);
-      const body={staffId:id, kind:$("#dKind").value, from:from||"", until:until||"", note:$("#dNote").value.trim(), assetId:up.id, fileName:f.name, uploadedAt:new Date().toISOString()};
+      const kind=$("#dKind").value; const body={staffId:id, kind, month:kind==="payslip"?(from?from.slice(0,7):prevMonth()):"", from:from||"", until:until||"", note:$("#dNote").value.trim(), assetId:up.id, fileName:f.name, uploadedAt:new Date().toISOString()};
       await S.db.doc("hrdocs/"+docId).set(body); S.hrdocs[docId]=body;
       openStaff(id); toast("Document uploaded"); renderAll();
     }catch(err){ const c=err&&err.code; e.target.disabled=false; e.target.textContent="Upload";
@@ -873,6 +942,13 @@ $("#brush").addEventListener("click", e=>{ const b=e.target.closest("[data-brush
 $("#rosterBody").addEventListener("click", e=>{ const b=e.target.closest(".cellbtn"); if(!b) return; const sid=b.dataset.sid, day=Number(b.dataset.day); if(S.brush!==null) paint(sid,day); else openCell(sid,day); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.brush!==null && !document.querySelector("dialog[open]")){ S.brush=null; renderBrush(); } });
 $("#leaveTable").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
+$("#payTable").addEventListener("click", e=>{ if(e.target.closest("a")) return; const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
+$("#pMonth").addEventListener("change", e=>{ S.payMonth=e.target.value||S.payMonth; renderPayslips(); });
+$("#bFiles").addEventListener("change", e=>{ const fs=[...e.target.files]; bulk = bulk.filter(b=>b.status!=="done").concat(fs.map(f=>({file:f, sid:matchStaff(f.name), until:"", status:""}))); e.target.value=""; renderBulk(); });
+$("#bKind").addEventListener("change", renderBulk);
+$("#bMonth").addEventListener("change", renderBulk);
+$("#bRows").addEventListener("change", e=>{ const a=e.target.dataset.bsid, u=e.target.dataset.buntil; if(a!=null){ bulk[a].sid=e.target.value; bulk[a].status=""; renderBulk(); } if(u!=null){ bulk[u].until=e.target.value; } });
+$("#bRows").addEventListener("click", e=>{ if(e.target.id==="bGo"){ e.target.disabled=true; runBulk(); } if(e.target.id==="bClear"){ bulk=[]; renderBulk(); } });
 $("#docTable").addEventListener("click", e=>{ if(e.target.closest("a")) return; const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
 $("#staffBody").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
 ["rqStaff","rqType","rqFrom","rqTo"].forEach(id=>$("#"+id).addEventListener("change", ()=>{ if(id==="rqFrom" && (!$("#rqTo").value || $("#rqTo").value<$("#rqFrom").value)) $("#rqTo").value=$("#rqFrom").value; checkReqForm(); }));
