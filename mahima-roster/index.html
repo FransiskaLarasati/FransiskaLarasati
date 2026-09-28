@@ -340,7 +340,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
 
 
   <section id="tab-pay" hidden>
-    <div id="scLocked" class="empty-state" hidden><b>Managers only</b>Only managers with edit access can see service charge.</div>
+    <div id="scLocked" class="empty-state" hidden></div>
     <div id="scBody">
       <div class="panel" style="margin-bottom:14px">
         <h2>1 · Service charge</h2>
@@ -362,7 +362,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
       <div id="scHist"></div>
     </div>
     <div style="height:18px"></div>
-    <div id="payLocked" class="empty-state" hidden><b>Managers only</b>Only managers with edit access can see payroll.</div>
+    <div id="payLocked" class="empty-state" hidden><b>Private</b>Payroll, salaries and service charge are only visible to Fransiska and the owner.</div>
     <div id="payBody">
       <div class="panel" style="margin-bottom:14px">
         <h2>2 · Payroll &amp; payslips</h2>
@@ -377,6 +377,18 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
       </div>
       <div class="stats" id="payStats"></div>
       <div class="tablewrap"><table class="data" id="prTable" style="min-width:1100px"></table></div>
+      <div class="panel" style="margin-top:18px">
+        <h2>3 · THR (holiday allowance)</h2>
+        <p class="note" style="margin-top:0">Half of basic salary for each staff-contract employee: Hindu staff at every Galungan, Catholic staff at Easter and Christmas. Paid 2 days before the holiday. Dates come from the public holiday list. Change any amount if needed.</p>
+        <div class="bar">
+          <select class="field" id="thrEvent" aria-label="Holiday"></select>
+          <div class="grow"></div>
+          <button type="button" class="btn" id="thrSave">Save amounts</button>
+          <button type="button" class="btn" id="thrDownload">Download all (one PDF)</button>
+          <button type="button" class="btn primary" id="thrGen">Generate THR slips</button>
+        </div>
+        <div id="thrBody"><div id="thrInfo"></div><div class="tablewrap" style="margin-top:10px"><table class="data" id="thrTable" style="min-width:480px"></table></div></div>
+      </div>
     </div>
   </section>
 
@@ -415,7 +427,7 @@ const S = {
   db:null, downloads:null, live:false,
   staff:{}, weeks:{}, requests:{}, holidays:[],
   week: mondayOf(todayISO()), tab:"roster", brush:null, dept:"", q:"",
-  sickdocs:{}, hrdocs:{}, assets:null, scGrades:null, scMonths:{}, paySal:null, payMonths:{},
+  sickdocs:{}, hrdocs:{}, assets:null, scGrades:null, scMonths:{}, paySal:null, payMonths:{}, thr:{},
   pending:{}, // weekId -> {sid: {cells, short, remark}}
 };
 try { const t = localStorage.getItem("mahima.tab"); if (t && document.getElementById("tab-"+t)) S.tab = t; } catch(e){}
@@ -599,6 +611,7 @@ function openCell(sid, day){
 function leaveWarning(sid, code, date){
   const s = S.staff[sid]; if(!s) return "";
   if(s.contract==="DW" && ["AL","EO","PH"].includes(code)) return {lvl:"bad", t:`${s.name} is a daily worker: no EO, AL or PH.`};
+  if(WEEK_LOCK_TYPES.includes(code)){ const dc=deptWeekClashes(sid,date,date).filter(x=>!(x.how==="on the roster" && codeOn(sid,date)===code)); if(dc.length) return {lvl:"warn", t:`${dc[0].name} already has ${dc[0].type} this week in ${s.dept}. Only one person per department should be on leave per week.`}; }
   if(s.contract==="SC" && ["AL","PH"].includes(code) && eligibleFrom(s) > date) return {lvl:"warn", t:`${s.name}'s leave unlocks on ${fmt(eligibleFrom(s))} (1 year of service).`};
   if(code==="AL"||code==="PH"||code==="EO"){
     const t = tallies()[sid]; const cur = codeOn(sid,date)===code ? 0 : 1;
@@ -710,21 +723,51 @@ function renderRequests(){
   const b=$("#reqBadge"); b.textContent=pend.length; b.hidden=!pend.length;
   checkReqForm();
 }
-function checkReqForm(){
-  const sid=$("#rqStaff").value, type=$("#rqType").value, from=$("#rqFrom").value, to=$("#rqTo").value||from;
-  let out="";
-  if(sid && from){
-    if(to<from) out=`<div class="msg bad">The end date is before the start date.</div>`;
-    else { const w=leaveWarning(sid,type,from); if(w) out=`<div class="msg ${w.lvl}">${esc(w.t)}</div>`;
-      const clashes = daysBetween(from,to).filter(d=>{ const c=codeOn(sid,d); return c && c!==type; });
-      if(clashes.length) out+=`<div class="msg warn" style="margin-top:6px">Approving replaces ${clashes.length} scheduled shift${clashes.length>1?"s":""} (${clashes.slice(0,3).map(fmtShort).join(", ")}${clashes.length>3?"…":""}).</div>`;
+/* one person per department on leave in the same week (Mon–Sun) */
+const WEEK_LOCK_TYPES = ["AL","EO","PH"];
+function deptWeekClashes(sid, from, to, ignoreReq){
+  const me=S.staff[sid]; if(!me) return [];
+  const weeks=[...new Set(daysBetween(from,to).map(mondayOf))], out=[];
+  for(const wk of weeks){
+    const wkEnd=addDays(wk,6);
+    for(const [id,r] of Object.entries(S.requests)){
+      if(id===ignoreReq || r.staffId===sid || r.status==="rejected" || !WEEK_LOCK_TYPES.includes(r.type)) continue;
+      const o=S.staff[r.staffId]; if(!o || o.dept!==me.dept) continue;
+      if(r.from<=wkEnd && r.to>=wk) out.push({wk, name:o.name, type:r.type, how:r.status==="pending"?"requested":"approved"});
+    }
+    for(const o of staffList()){
+      if(o.id===sid || o.dept!==me.dept) continue;
+      weekRow(wk,o.id).cells.forEach(c=>{ if(WEEK_LOCK_TYPES.includes(c) && !out.some(x=>x.wk===wk && x.name===o.name)) out.push({wk, name:o.name, type:c, how:"on the roster"}); });
     }
   }
+  return out;
+}
+function takenWeeksHTML(sid){
+  const me=S.staff[sid]; if(!me) return "";
+  const from=todayISO(), wks=[];
+  for(let i=0;i<16;i++){ const wk=addDays(mondayOf(from),7*i); const c=deptWeekClashes(sid,wk,addDays(wk,6)); if(c.length) wks.push(`<li>${fmtShort(wk)} – ${fmtShort(addDays(wk,6))}: ${c.map(x=>esc(x.name)+" ("+x.type+")").join(", ")}</li>`); }
+  return wks.length? `<div class="note" style="margin-top:6px">Weeks already taken in ${esc(me.dept)}:<ul style="margin:4px 0 0;padding-left:18px">${wks.join("")}</ul></div>` : `<div class="note" style="margin-top:6px">No one in ${esc(me.dept)} has leave in the next 16 weeks.</div>`;
+}
+function checkReqForm(){
+  const sid=$("#rqStaff").value, type=$("#rqType").value, from=$("#rqFrom").value, to=$("#rqTo").value||from;
+  let out="", blocked=false;
+  $("#rqFrom").min=todayISO(); $("#rqTo").min=from||todayISO();
+  if(sid && from){
+    if(to<from) out=`<div class="msg bad">The end date is before the start date.</div>`;
+    else { const w=leaveWarning(sid,type,from); if(w && !/per department/.test(w.t)) out=`<div class="msg ${w.lvl}">${esc(w.t)}</div>`;
+      const clashes = daysBetween(from,to).filter(d=>{ const c=codeOn(sid,d); return c && c!==type; });
+      if(clashes.length) out+=`<div class="msg warn" style="margin-top:6px">Approving replaces ${clashes.length} scheduled shift${clashes.length>1?"s":""} (${clashes.slice(0,3).map(fmtShort).join(", ")}${clashes.length>3?"…":""}).</div>`;
+      if(WEEK_LOCK_TYPES.includes(type)){ const dc=deptWeekClashes(sid,from,to); if(dc.length){ blocked=true; out=`<div class="msg bad">This week is taken: ${dc.map(x=>esc(x.name)+" has "+x.type+" ("+x.how+") in the week of "+fmtShort(x.wk)).join("; ")}. Only one person per department can take leave in the same week. Choose another week.</div>`+out; } }
+    }
+  }
+  if(sid && WEEK_LOCK_TYPES.includes(type)) out+=takenWeeksHTML(sid);
   $("#rqCheck").innerHTML=out;
+  $("#reqForm button[type=submit]").disabled=blocked;
 }
 async function approve(id){
   const r=S.requests[id]; if(!r) return;
   const w=leaveWarning(r.staffId,r.type,r.from); if(w&&w.lvl==="bad"){ toast(w.t); return; }
+  if(WEEK_LOCK_TYPES.includes(r.type)){ const dc=deptWeekClashes(r.staffId,r.from,r.to,id).filter(x=>x.how!=="requested"); if(dc.length){ toast(`Can't approve: ${dc[0].name} already has ${dc[0].type} in the week of ${fmtShort(dc[0].wk)} (same department).`); return; } }
   for(const d of daysBetween(r.from,r.to)){
     const wk=mondayOf(d), i=(parse(d).getDay()+6)%7, row=weekRow(wk,r.staffId);
     const cells=[...row.cells]; cells[i]=r.type; queueRow(wk,r.staffId,{cells});
@@ -766,7 +809,7 @@ function renderStaff(){
       <div class="note">AL ${t[s.id].AL} · EO ${t[s.id].EO} · PH ${t[s.id].PH} · Sick/DC ${t[s.id].SICK}</div></button>`).join("")}</div>`; }).join("");
 }
 let staffEdit=null;
-const DOC_KINDS = {contract:"Employment contract (SC)", dw:"Daily Worker agreement (DW)", offer:"Employment offer letter", payslip:"Payslip", other:"Other document / attachment"};
+const DOC_KINDS = {contract:"Employment contract (SC)", dw:"Daily Worker agreement (DW)", offer:"Employment offer letter", payslip:"Payslip", thr:"THR slip", other:"Other document / attachment"};
 function prevMonth(){ const d=parse(todayISO()); d.setDate(1); d.setMonth(d.getMonth()-1); return iso(d).slice(0,7); }
 function fmtMonth(m){ if(!m) return ""; const [y,mm]=m.split("-"); return MONTHS[Number(mm)-1]+" "+y; }
 S.payMonth = prevMonth();
@@ -974,6 +1017,91 @@ async function downloadAllPayslips(){
   try{ await S.downloads.save({filename:name, data:doc.output("arraybuffer")}); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't save the file"); }
 }
 
+/* ---------- THR (religious holiday allowance) ---------- */
+// Hindu staff: half of basic salary at every Galungan. Catholic staff: half at Easter and at Christmas. Paid 2 days before the holiday.
+const THR_SHARE = 0.5, THR_DAYS_BEFORE = 2;
+let thrEdits = {}, thrEventId = null, thrBusy = false;
+function thrEvents(){
+  const ev=[];
+  for(const h of S.holidays){
+    if(/galungan/i.test(h.name)) ev.push({id:"galungan-"+h.date, name:"Galungan", holiday:h.date, group:"Hindu"});
+    if(/christmas day/i.test(h.name)) ev.push({id:"christmas-"+h.date, name:"Christmas", holiday:h.date, group:"Catholic"});
+    if(/good friday/i.test(h.name)){ const easter=addDays(h.date,2); ev.push({id:"easter-"+easter, name:"Easter", holiday:easter, group:"Catholic"}); }
+  }
+  ev.forEach(e=>e.pay=addDays(e.holiday,-THR_DAYS_BEFORE));
+  return ev.filter(e=>e.holiday>=addDays(todayISO(),-60)).sort((a,b)=>a.holiday.localeCompare(b.holiday));
+}
+function thrStaff(e){ return staffList().filter(s=>s.contract==="SC" && s.phGroup===e.group && s.start<=e.pay); }
+function thrBasic(s){ const m=todayISO().slice(0,7); return payDefaults(s,m).basic || 0; }
+function thrAmount(e,s){ const saved=S.thr["thr-"+e.id]?.rows?.[s.id]; const ed=thrEdits[e.id]?.[s.id];
+  return ed!=null ? ed : saved ? saved.amount : Math.round(thrBasic(s)*THR_SHARE); }
+function renderTHR(){
+  const evs=thrEvents(); const sel=$("#thrEvent");
+  if(!evs.length){ $("#thrBody").innerHTML='<div class="note">No Galungan, Easter or Christmas dates in the holiday list.</div>'; return; }
+  if(!thrEventId || !evs.some(e=>e.id===thrEventId)) thrEventId=(evs.find(e=>e.pay>=todayISO())||evs[0]).id;
+  sel.innerHTML=evs.map(e=>`<option value="${e.id}" ${e.id===thrEventId?"selected":""}>${e.name} ${fmt(e.holiday)} · ${e.group} staff</option>`).join("");
+  const e=evs.find(x=>x.id===thrEventId), list=thrStaff(e), rec=S.thr["thr-"+e.id];
+  const days=Math.round((parse(e.pay)-parse(todayISO()))/864e5);
+  const total=list.reduce((n,s)=>n+thrAmount(e,s),0);
+  $("#thrInfo").innerHTML=`<div class="msg ${days<0?"ok":days<=7?"warn":"ok"}"><b>Pay on ${DAYS[(parse(e.pay).getDay()+6)%7]} ${fmt(e.pay)}</b> · 2 days before ${e.name} (${fmt(e.holiday)}) · ${days<0?"paid date passed":days===0?"today":"in "+days+" day"+(days===1?"":"s")} · ${list.length} staff · total ${rp(total)}${rec?.generatedAt?" · slips made "+fmt(rec.generatedAt.slice(0,10)):""}</div>`;
+  $("#thrTable").innerHTML=`<thead><tr><th>Staff</th><th class="num">Basic salary</th><th>THR amount</th></tr></thead><tbody>${list.map(s=>`<tr><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td><td class="num">${rp(thrBasic(s))}</td>
+    <td><input class="field" inputmode="numeric" data-thr="${esc(s.id)}" value="${thrAmount(e,s).toLocaleString("id-ID")}" style="width:140px;text-align:right"></td></tr>`).join("")||'<tr><td colspan="3" class="note">Nobody in this group.</td></tr>'}
+    <tr><td colspan="2"><b>Total</b></td><td><b>${rp(total)}</b></td></tr></tbody>`;
+  $("#thrGen").disabled=!S.assets||thrBusy;
+}
+async function saveTHR(extra){
+  const e=thrEvents().find(x=>x.id===thrEventId); if(!e||!S.db) return;
+  const rows=Object.fromEntries(thrStaff(e).map(s=>[s.id,{name:s.name, amount:thrAmount(e,s)}]));
+  const body={...(S.thr["thr-"+e.id]||{}), event:e, rows, savedAt:new Date().toISOString(), ...(extra||{})};
+  S.thr["thr-"+e.id]=body; delete thrEdits[e.id];
+  try{ await S.db.doc("payroll/thr-"+e.id).set(body); }catch(err){ handleWriteError(err); }
+}
+function drawThrSlip(doc, s, e, amount){
+  const W=210, L=16, R=W-16, sal=(S.paySal||{})[s.id]||{};
+  doc.setFillColor(15,94,79); doc.rect(0,0,W,34,"F"); doc.setFillColor(211,224,74); doc.circle(R-4,17,7,"F");
+  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text("MAHIMA", L, 17);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text("Tennis, Padel & Gym", L, 24);
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("THR SLIP", R-16, 15, {align:"right"});
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(e.name+" "+parse(e.holiday).getFullYear(), R-16, 22, {align:"right"});
+  doc.setTextColor(22,33,30); doc.setFontSize(9.5);
+  const info=[["Name", sal.bankName||s.name],["Position", s.title||""],["Holiday", e.name+" · "+fmt(e.holiday)],["Paid on", fmt(e.pay)],["Bank account", sal.bank||"—"],["Department", s.dept||""]];
+  info.forEach(([k,v],i)=>{ const x=i%2?110:L, y=48+Math.floor(i/2)*8; doc.setTextColor(110,125,120); doc.text(k.toUpperCase(), x, y); doc.setTextColor(22,33,30); doc.text(String(v), x+30, y); });
+  let y=86; doc.setFillColor(234,238,236); doc.rect(L, y-5, R-L, 8, "F"); doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.text("HOLIDAY ALLOWANCE (THR)", L+3, y); y+=9;
+  doc.setFont("helvetica","normal"); doc.text("THR – "+e.name, L+3, y); doc.text(rp(amount), R-3, y, {align:"right"}); y+=14;
+  doc.setFillColor(15,94,79); doc.rect(L, y-6, R-L, 16, "F"); doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("TOTAL PAID", L+4, y+4); doc.setFontSize(15); doc.text(rp(amount), R-4, y+4, {align:"right"});
+  doc.setTextColor(110,125,120); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+  doc.text("Selamat hari raya from all of us at Mahima. This slip is confidential.", L, 282); doc.text("Generated "+fmt(todayISO()), R, 282, {align:"right"});
+}
+async function generateTHR(){
+  const e=thrEvents().find(x=>x.id===thrEventId); if(!e) return;
+  if(!window.jspdf){ toast("The PDF maker didn't load. Reload the page and try again."); return; }
+  if(!S.assets){ toast("Only managers with edit access can make THR slips."); return; }
+  const list=thrStaff(e).filter(s=>thrAmount(e,s)>0); if(!list.length){ toast("No THR amounts to pay"); return; }
+  thrBusy=true; const btn=$("#thrGen"); let done=0, failed=0;
+  for(const s of list){
+    btn.textContent=`Making THR slips… ${done+1} / ${list.length}`;
+    try{
+      const doc=new window.jspdf.jsPDF({unit:"mm",format:"a4"}); drawThrSlip(doc,s,e,thrAmount(e,s));
+      const file=new File([doc.output("blob")], `THR_${e.name}_${s.name.replace(/[^A-Za-z0-9]+/g,"_")}_${e.holiday}.pdf`, {type:"application/pdf"});
+      const up=await S.assets.upload(file,{type:"application/pdf"});
+      const docId=s.id+"_"+e.id+"_thr", old=S.hrdocs[docId];
+      if(old){ await S.assets.delete(old.assetId).catch(()=>{}); }
+      const body={staffId:s.id, kind:"thr", month:e.pay.slice(0,7), generated:true, from:e.pay, until:"", note:e.name+" "+fmt(e.holiday)+" · "+rp(thrAmount(e,s)), assetId:up.id, fileName:file.name, uploadedAt:new Date().toISOString()};
+      await S.db.doc("hrdocs/"+docId).set(body); S.hrdocs[docId]=body; done++;
+    }catch(err){ failed++; }
+  }
+  await saveTHR({generatedAt:new Date().toISOString()});
+  thrBusy=false; btn.textContent="Generate THR slips"; renderAll();
+  toast(failed? `${done} THR slips made, ${failed} failed` : `${done} THR slips made for ${e.name}`);
+}
+async function downloadTHR(){
+  const e=thrEvents().find(x=>x.id===thrEventId); if(!e||!window.jspdf){ toast("The PDF maker didn't load. Reload the page and try again."); return; }
+  const list=thrStaff(e).filter(s=>thrAmount(e,s)>0); if(!list.length){ toast("No THR amounts to pay"); return; }
+  const doc=new window.jspdf.jsPDF({unit:"mm",format:"a4"}); list.forEach((s,i)=>{ if(i) doc.addPage(); drawThrSlip(doc,s,e,thrAmount(e,s)); });
+  if(!S.downloads){ toast("Downloads aren't available in this view"); return; }
+  try{ await S.downloads.save({filename:`Mahima_THR_${e.name}_${e.holiday}.pdf`, data:doc.output("arraybuffer")}); }catch(err){ if(err&&err.code!=="declined") toast("Couldn't save the file"); }
+}
+
 /* ---------- service charge ---------- */
 const SC_LEADS = ["sukma","fransiska","yudha","leoni","komang"]; // managers & supervisors: 100%
 const SC_PREOPEN_EXCEPT = ["intan"];                               // hired 2026 but counted as pre-opening: 75%
@@ -1139,7 +1267,7 @@ function renderAll(){
   if(S.tab==="roster"){ renderBrush(); renderRoster(); renderHolidays(); }
   if(S.tab==="leave") renderLeave();
   if(S.tab==="docs"){ renderDocs(); renderStaff(); }
-  if(S.tab==="pay"){ renderSC(); renderPayroll(); }
+  if(S.tab==="pay"){ renderSC(); renderPayroll(); if(!$("#payBody").hidden) renderTHR(); }
   renderRequests();
 }
 $("#tabs").addEventListener("click", e=>{ const b=e.target.closest("[data-tab]"); if(b) setTab(b.dataset.tab); });
@@ -1164,6 +1292,12 @@ $("#prTable").addEventListener("input", e=>{ const sid=e.target.dataset.pay, f=e
 $("#prTable").addEventListener("click", e=>{ const b=e.target.closest("[data-preview]"); if(!b) return; const s={id:b.dataset.preview,...S.staff[b.dataset.preview]}; $("#cellForm").innerHTML=slipHTML(s,payDraftMonth,payRow(s,payDraftMonth)); $("#cellDlg").showModal(); });
 $("#prGen").addEventListener("click", ()=>{ if(!payBusy) generateAllPayslips(); });
 $("#prDownload").addEventListener("click", downloadAllPayslips);
+$("#thrEvent").addEventListener("change", e=>{ thrEventId=e.target.value; renderTHR(); });
+$("#thrTable").addEventListener("input", e=>{ const sid=e.target.dataset.thr; if(!sid) return; const n=parseRp(e.target.value); e.target.value=n?n.toLocaleString("id-ID"):""; (thrEdits[thrEventId]=thrEdits[thrEventId]||{})[sid]=n; });
+$("#thrTable").addEventListener("change", ()=>renderTHR());
+$("#thrSave").addEventListener("click", async ()=>{ await saveTHR(); renderTHR(); toast("THR amounts saved"); });
+$("#thrGen").addEventListener("click", ()=>{ if(!thrBusy) generateTHR(); });
+$("#thrDownload").addEventListener("click", downloadTHR);
 $("#scMonth").addEventListener("change", ()=>{ scLoaded=null; renderSC(); });
 $("#scPool").addEventListener("input", e=>{ const n=parseRp(e.target.value); e.target.value = n? n.toLocaleString("id-ID") : ""; renderSC(true); });
 $("#scTable").addEventListener("change", async e=>{
@@ -1201,6 +1335,8 @@ $("#reqForm").addEventListener("submit", async e=>{
   if(!staffId||!from){ $("#rqCheck").innerHTML='<div class="msg bad">Choose a staff member and a start date.</div>'; return; }
   if(to<from){ return; }
   const w=leaveWarning(staffId,type,from); if(w&&w.lvl==="bad"){ return; }
+  if(from<todayISO()){ $("#rqCheck").innerHTML='<div class="msg bad">Choose a date from today onwards.</div>'; return; }
+  if(WEEK_LOCK_TYPES.includes(type) && deptWeekClashes(staffId,from,to).length){ checkReqForm(); return; }
   const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   await setReq(id,{staffId,type,from,to,note:$("#rqNote").value.trim(),status:"pending",createdAt:new Date().toISOString()});
   $("#rqNote").value=""; renderRequests(); toast("Request sent for approval");
@@ -1226,7 +1362,7 @@ function setSync(state){ const d=$("#syncDot"), t=$("#syncText"); d.className="d
   db.collection("staff").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.staff=o; rerender(); }, onErr);
   db.collection("weeks").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.weeks=o; rerender(); }, onErr);
   db.collection("requests").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.requests=o; rerender(); }, onErr);
-  db.collection("payroll").onSnapshot(snap=>{ const m={}; let sal=null; snap.docs.forEach(d=>{ if(d.id==="salaries") sal=d.data().staff||{}; else m[d.id]=d.data(); }); S.paySal=sal; S.payMonths=m; if(payDraftMonth && !paySaveT && m[payDraftMonth]) { payDraftMonth=null; } rerender(); }, onErr);
+  db.collection("payroll").onSnapshot(snap=>{ const m={}, t={}; let sal=null; snap.docs.forEach(d=>{ if(d.id==="salaries") sal=d.data().staff||{}; else if(d.id.startsWith("thr-")) t[d.id]=d.data(); else m[d.id]=d.data(); }); S.paySal=sal; S.payMonths=m; S.thr=t; if(payDraftMonth && !paySaveT && m[payDraftMonth]) { payDraftMonth=null; } rerender(); }, onErr);
   db.collection("servicecharge").onSnapshot(snap=>{ const m={}; let g=null; snap.docs.forEach(d=>{ if(d.id==="grades") g=d.data().grades||{}; else m[d.id]=d.data(); }); S.scGrades=g; S.scMonths=m; rerender(); }, onErr);
   db.collection("hrdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.hrdocs=o; rerender(); }, onErr);
   db.collection("sickdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.sickdocs=o; rerender(); }, onErr);
