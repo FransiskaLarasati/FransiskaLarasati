@@ -245,6 +245,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <button role="tab" data-tab="requests" aria-selected="false">Leave requests <span class="badge" id="reqBadge" hidden>0</span></button>
     <button role="tab" data-tab="holidays" aria-selected="false">Public holidays</button>
     <button role="tab" data-tab="staff" aria-selected="false">Staff</button>
+    <button role="tab" data-tab="docs" aria-selected="false">Contracts</button>
   </nav>
 
   <div class="banner" id="offline" hidden>Live data isn't available in this view. Open the roster from its claude.ai link to see and edit the shared schedule.</div>
@@ -320,6 +321,12 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
   </section>
 
   <!-- STAFF -->
+  <section id="tab-docs" hidden>
+    <div class="bar"><div class="grow note">Employment contracts, Daily Worker agreements and offer letters. Only managers with edit access can see or upload them. Click a person to upload.</div></div>
+    <div class="stats" id="docStats"></div>
+    <div class="tablewrap"><table class="data" id="docTable"></table></div>
+  </section>
+
   <section id="tab-staff" hidden>
     <div class="bar"><div class="grow note">Click a person to edit their details or see every leave day they've taken.</div><button class="btn primary" id="addStaff">Add staff</button></div>
     <div id="staffBody"></div>
@@ -358,7 +365,7 @@ const S = {
   db:null, downloads:null, live:false,
   staff:{}, weeks:{}, requests:{}, holidays:[],
   week: mondayOf(todayISO()), tab:"roster", brush:null, dept:"", q:"",
-  sickdocs:{}, assets:null,
+  sickdocs:{}, hrdocs:{}, assets:null,
   pending:{}, // weekId -> {sid: {cells, short, remark}}
 };
 try { const t = localStorage.getItem("mahima.tab"); if (t) S.tab = t; } catch(e){}
@@ -705,10 +712,47 @@ function renderStaff(){
   $("#staffBody").innerHTML = DEPTS.map(d=>{ const p=list.filter(s=>s.dept===d); if(!p.length) return "";
     return `<h2 class="sec">${esc(d)}</h2><div class="staffgrid">${p.map(s=>`<button type="button" class="scard" data-staff="${esc(s.id)}">
       <div class="n">${esc(s.name)}</div><div class="r">${esc(s.title||"")}</div>
-      <div class="f"><span class="pill mute">${esc(s.contract)}</span><span class="pill mute">Started ${fmt(s.start)}</span>${s.contract==="SC"?(isEligible(s)?'<span class="pill ok">Leave unlocked</span>':`<span class="pill warn">Leave from ${fmt(eligibleFrom(s))}</span>`):""}</div>
+      <div class="f"><span class="pill mute">${esc(s.contract)}</span><span class="pill mute">Started ${fmt(s.start)}</span>${docPill(s)}${s.contract==="SC"?(isEligible(s)?'<span class="pill ok">Leave unlocked</span>':`<span class="pill warn">Leave from ${fmt(eligibleFrom(s))}</span>`):""}</div>
       <div class="note">AL ${t[s.id].AL} · EO ${t[s.id].EO} · PH ${t[s.id].PH} · Sick/DC ${t[s.id].SICK}</div></button>`).join("")}</div>`; }).join("");
 }
 let staffEdit=null;
+const DOC_KINDS = {contract:"Employment contract (SC)", dw:"Daily Worker agreement (DW)", offer:"Employment offer letter", other:"Other document"};
+function docsOf(sid){ return Object.entries(S.hrdocs).map(([id,d])=>({id,...d})).filter(d=>d.staffId===sid).sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||"")); }
+function mainDoc(s){ const want = s.contract==="DW" ? "dw" : "contract"; return docsOf(s.id).find(d=>d.kind===want) || null; }
+function docStatus(s){
+  const d=mainDoc(s); if(!d) return {lvl:"bad", t:s.contract==="DW"?"No DW agreement":"No contract"};
+  if(d.until){ const left=Math.round((parse(d.until)-parse(todayISO()))/864e5);
+    if(left<0) return {lvl:"bad", t:"Expired "+fmt(d.until)};
+    if(left<=30) return {lvl:"warn", t:"Ends in "+left+" day"+(left===1?"":"s")}; }
+  return {lvl:"ok", t:d.until?"Valid to "+fmt(d.until):"On file"};
+}
+function docPill(s){ if(!Object.keys(S.hrdocs).length && !S.assets) return ""; const st=docStatus(s); return `<span class="pill ${st.lvl}">${esc(st.t)}</span>`; }
+function docsSection(id){
+  const list=docsOf(id);
+  return `<div><div class="note" style="margin-bottom:6px">Contracts &amp; documents (${list.length}) · managers only</div>
+    <div class="list">${list.length?list.map(d=>`<div class="req"><div><div class="t">${esc(DOC_KINDS[d.kind]||d.kind)}</div>
+      <div class="d">${d.from?fmt(d.from):"—"}${d.until?" – "+fmt(d.until):""}${d.note?" · "+esc(d.note):""}</div>
+      <div class="d"><a href="/_blob/${esc(d.assetId)}" target="_blank" rel="noopener">Open ${esc(d.fileName||"file")}</a></div></div>
+      <div class="acts">${S.assets?`<button type="button" class="btn small danger" data-deldoc="${esc(d.id)}">Delete</button>`:""}</div></div>`).join(""):'<span class="note">No documents yet.</span>'}</div>
+    ${S.assets?`<div class="proof" style="margin-top:10px">
+      <div class="row"><select class="field" id="dKind" aria-label="Document type">${Object.entries(DOC_KINDS).map(([k,v])=>`<option value="${k}" ${(S.staff[id].contract==="DW"?"dw":"contract")===k?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label>Valid from<input class="field" type="date" id="dFrom"></label><label>Valid until (optional)<input class="field" type="date" id="dUntil"></label></div>
+      <input class="field" id="dNote" placeholder="Note, e.g. 1-year contract, salary review Jan">
+      <div class="row"><input class="field" type="file" id="dFile" accept="application/pdf,image/png,image/jpeg,image/webp" style="flex:1;min-width:0"><button type="button" class="btn primary" id="dUpload">Upload</button></div>
+      <div id="dMsg"></div></div>`:'<div class="note" style="margin-top:6px">Only managers with edit access can upload documents.</div>'}</div>`;
+}
+function renderDocs(){
+  const list=staffList(), sts=list.map(s=>({s,st:docStatus(s),d:mainDoc(s),offer:docsOf(s.id).find(x=>x.kind==="offer")}));
+  const c=l=>sts.filter(x=>x.st.lvl===l).length;
+  $("#docStats").innerHTML=[[c("ok")+" / "+list.length,"Contracts or DW agreements on file"],[c("warn"),"Ending within 30 days"],[c("bad"),"Missing or expired"],[Object.keys(S.hrdocs).length,"Documents stored"]]
+    .map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+  $("#docTable").innerHTML=`<thead><tr><th>Staff</th><th>Type</th><th>Status</th><th>Main document</th><th>Offer letter</th><th class="num">All docs</th></tr></thead><tbody>${sts.map(({s,st,d,offer})=>`<tr class="click" data-staff="${esc(s.id)}">
+    <td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")} · ${esc(s.dept)}</div></td><td><span class="pill mute">${esc(s.contract)}</span></td>
+    <td><span class="pill ${st.lvl}">${esc(st.t)}</span></td>
+    <td>${d?`<a href="/_blob/${esc(d.assetId)}" target="_blank" rel="noopener">${esc(d.fileName||"Open")}</a>`:'<span class="note">—</span>'}</td>
+    <td>${offer?`<a href="/_blob/${esc(offer.assetId)}" target="_blank" rel="noopener">${esc(offer.fileName||"Open")}</a>`:'<span class="note">—</span>'}</td>
+    <td class="num">${docsOf(s.id).length}</td></tr>`).join("")}</tbody>`;
+}
 function openStaff(id){
   const s = id? S.staff[id] : {name:"",title:"",dept:DEPTS[0],contract:"SC",start:todayISO(),eoFwd:0,phGroup:"Hindu"};
   staffEdit={id, ...s};
@@ -723,6 +767,7 @@ function openStaff(id){
       <label>EO balance on 1 Oct<input class="field" type="number" id="sfEo" value="${s.eoFwd||0}" min="-60" max="60"></label></div>
       <label>PH group<select class="field" id="sfPh">${["Hindu","Catholic","None"].map(g=>`<option ${g===s.phGroup?"selected":""}>${g}</option>`).join("")}</select></label>
       ${id?`<div><div class="note" style="margin-bottom:6px">Leave &amp; absence since 1 Oct (${hist.length})</div><div class="hist">${hist.length?hist.map(h=>`<span class="${chipClass(h.code)}">${h.code}<span style="font:500 10px var(--body)">${fmtShort(h.date)}</span></span>`).join(""):'<span class="note">None yet</span>'}</div></div>`:""}
+      ${id?docsSection(id):""}
       <div id="sfMsg"></div>
     </div>
     <div class="foot">${id?`<button type="button" class="btn danger" id="sfArchive">Remove from roster</button>`:"<span></span>"}<div class="row"><button class="btn" value="cancel">Cancel</button><button type="button" class="btn primary" id="sfSave">Save</button></div></div>`;
@@ -736,6 +781,31 @@ $("#staffForm").addEventListener("click", async e=>{
     if(body.order==null) body.order = 100 + staffList().length;
     S.staff[id]=body; $("#staffDlg").close(); renderAll();
     if(S.db){ try{ await S.db.doc("staff/"+id).set(body); toast("Staff saved"); }catch(err){ handleWriteError(err); } }
+  }
+  if(e.target.id==="dUpload"){
+    const f=$("#dFile").files[0], id=staffEdit.id;
+    if(!f){ $("#dMsg").innerHTML='<div class="msg bad">Choose the file first (PDF or photo).</div>'; return; }
+    const from=$("#dFrom").value, until=$("#dUntil").value;
+    if(from && until && until<from){ $("#dMsg").innerHTML='<div class="msg bad">"Valid until" can\'t be before "valid from".</div>'; return; }
+    e.target.disabled=true; e.target.textContent="Uploading…";
+    try{
+      let type=f.type; if(!type){ const ext=(f.name.split(".").pop()||"").toLowerCase(); type={pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[ext]||""; }
+      const up=await S.assets.upload(f, type?{type}:undefined);
+      const docId=id+"_"+Date.now().toString(36);
+      const body={staffId:id, kind:$("#dKind").value, from:from||"", until:until||"", note:$("#dNote").value.trim(), assetId:up.id, fileName:f.name, uploadedAt:new Date().toISOString()};
+      await S.db.doc("hrdocs/"+docId).set(body); S.hrdocs[docId]=body;
+      openStaff(id); toast("Document uploaded"); renderAll();
+    }catch(err){ const c=err&&err.code; e.target.disabled=false; e.target.textContent="Upload";
+      $("#dMsg").innerHTML=`<div class="msg bad">${c==="unsupported_type"?"Upload a PDF, JPG, PNG or WEBP file.":c==="too_large"?"That file is over 20 MB.":c==="invalid_argument"?"Only managers with edit access can upload contracts.":"Upload failed. Try again."}</div>`; }
+    return;
+  }
+  const del=e.target.closest("[data-deldoc]");
+  if(del){
+    if(del.dataset.sure!=="1"){ del.dataset.sure="1"; del.textContent="Click again to delete"; return; }
+    const docId=del.dataset.deldoc, d=S.hrdocs[docId]; if(!d) return;
+    try{ await S.db.doc("hrdocs/"+docId).delete(); delete S.hrdocs[docId]; if(S.assets) await S.assets.delete(d.assetId).catch(()=>{}); openStaff(staffEdit.id); toast("Document deleted"); renderAll(); }
+    catch(err){ handleWriteError(err); }
+    return;
   }
   if(e.target.id==="sfArchive"){
     if(e.target.dataset.sure!=="1"){ e.target.dataset.sure="1"; e.target.textContent="Click again to remove"; return; }
@@ -785,6 +855,7 @@ function renderAll(){
   if(S.tab==="leave") renderLeave();
   if(S.tab==="holidays") renderHolidays();
   if(S.tab==="staff") renderStaff();
+  if(S.tab==="docs") renderDocs();
   renderRequests();
 }
 $("#tabs").addEventListener("click", e=>{ const b=e.target.closest("[data-tab]"); if(b) setTab(b.dataset.tab); });
@@ -802,6 +873,7 @@ $("#brush").addEventListener("click", e=>{ const b=e.target.closest("[data-brush
 $("#rosterBody").addEventListener("click", e=>{ const b=e.target.closest(".cellbtn"); if(!b) return; const sid=b.dataset.sid, day=Number(b.dataset.day); if(S.brush!==null) paint(sid,day); else openCell(sid,day); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.brush!==null && !document.querySelector("dialog[open]")){ S.brush=null; renderBrush(); } });
 $("#leaveTable").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
+$("#docTable").addEventListener("click", e=>{ if(e.target.closest("a")) return; const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
 $("#staffBody").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
 ["rqStaff","rqType","rqFrom","rqTo"].forEach(id=>$("#"+id).addEventListener("change", ()=>{ if(id==="rqFrom" && (!$("#rqTo").value || $("#rqTo").value<$("#rqFrom").value)) $("#rqTo").value=$("#rqFrom").value; checkReqForm(); }));
 $("#reqForm").addEventListener("submit", async e=>{
@@ -835,6 +907,7 @@ function setSync(state){ const d=$("#syncDot"), t=$("#syncText"); d.className="d
   db.collection("staff").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.staff=o; rerender(); }, onErr);
   db.collection("weeks").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.weeks=o; rerender(); }, onErr);
   db.collection("requests").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.requests=o; rerender(); }, onErr);
+  db.collection("hrdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.hrdocs=o; rerender(); }, onErr);
   db.collection("sickdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.sickdocs=o; rerender(); }, onErr);
   db.doc("config/holidays").onSnapshot(snap=>{ S.holidays = snap.exists ? (snap.data().items||[]) : []; rerender(); }, onErr);
 })();
