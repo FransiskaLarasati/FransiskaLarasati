@@ -277,7 +277,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     </div>
     <div id="noProof"></div>
     <div class="tablewrap"><table class="data" id="leaveTable"></table></div>
-    <p class="note">Rules from the master sheet: staff on contract (SC) get 12 days annual leave + 5 public holidays a year, usable after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
+    <p class="note">Staff on contract (SC) get 12 days annual leave + 5 public holidays a year. Everyone on staff by 1 Oct 2026 can use it from 1 Oct 2026; people who join later can use it after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
   </section>
 
   <!-- REQUESTS -->
@@ -372,7 +372,8 @@ function mondayOf(s){ const d=parse(s); const w=(d.getDay()+6)%7; d.setDate(d.ge
 function fmt(s){ const d=parse(s); return String(d.getDate()).padStart(2,"0")+" "+MONTHS[d.getMonth()]+" "+d.getFullYear(); }
 function fmtShort(s){ const d=parse(s); return String(d.getDate()).padStart(2,"0")+" "+MONTHS[d.getMonth()]; }
 function isoWeek(s){ const d=parse(s); d.setDate(d.getDate()+3-((d.getDay()+6)%7)); const w1=new Date(d.getFullYear(),0,4); return 1+Math.round(((d-w1)/864e5-3+((w1.getDay()+6)%7))/7); }
-function eligibleFrom(st){ const d=parse(st.start); d.setFullYear(d.getFullYear()+1); return iso(d); }
+// Everyone already on staff by 1 Oct 2026 can use leave from 1 Oct; people who join later wait 1 year.
+function eligibleFrom(st){ if(st.start<=LEAVE_START) return LEAVE_START; const d=parse(st.start); d.setFullYear(d.getFullYear()+1); return iso(d); }
 function isEligible(st){ return st.contract==="SC" && eligibleFrom(st) <= todayISO(); }
 function daysBetween(a,b){ const out=[]; let c=a; while(c<=b && out.length<120){ out.push(c); c=addDays(c,1);} return out; }
 
