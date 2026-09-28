@@ -246,6 +246,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <button role="tab" data-tab="holidays" aria-selected="false">Public holidays</button>
     <button role="tab" data-tab="staff" aria-selected="false">Staff</button>
     <button role="tab" data-tab="docs" aria-selected="false">Contracts &amp; payslips</button>
+    <button role="tab" data-tab="sc" aria-selected="false">Service charge</button>
   </nav>
 
   <div class="banner" id="offline" hidden>Live data isn't available in this view. Open the roster from its claude.ai link to see and edit the shared schedule.</div>
@@ -341,6 +342,29 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <div class="tablewrap"><table class="data" id="docTable"></table></div>
   </section>
 
+  <section id="tab-sc" hidden>
+    <div id="scLocked" class="empty-state" hidden><b>Managers only</b>Only managers with edit access can see service charge.</div>
+    <div id="scBody">
+      <div class="panel" style="margin-bottom:14px">
+        <h2>Monthly service charge</h2>
+        <p class="note" style="margin-top:0">Salary follows the contract. Service charge is paid on the 15th and split by grade: managers &amp; supervisors 100%, pre-opening staff 75%, staff hired in 2026 50%. Enter the month's total and each person's share is worked out as total × their grade ÷ everyone's grades added up.</p>
+        <div class="bar">
+          <label class="note" for="scMonth">Month</label><input class="field" type="month" id="scMonth">
+          <label class="note" for="scPool">Total service charge (Rp)</label><input class="field" id="scPool" inputmode="numeric" placeholder="e.g. 25.000.000" style="width:170px">
+          <label class="note" for="scPay">Paid on</label><input class="field" type="date" id="scPay">
+          <div class="grow"></div>
+          <button type="button" class="btn" id="scExport">Export CSV</button>
+          <button type="button" class="btn primary" id="scSave">Save month</button>
+        </div>
+        <div id="scMsg"></div>
+      </div>
+      <div class="stats" id="scStats"></div>
+      <div class="tablewrap"><table class="data" id="scTable"></table></div>
+      <h2 class="sec">Saved months</h2>
+      <div id="scHist"></div>
+    </div>
+  </section>
+
   <section id="tab-staff" hidden>
     <div class="bar"><div class="grow note">Click a person to edit their details or see every leave day they've taken.</div><button class="btn primary" id="addStaff">Add staff</button></div>
     <div id="staffBody"></div>
@@ -379,7 +403,7 @@ const S = {
   db:null, downloads:null, live:false,
   staff:{}, weeks:{}, requests:{}, holidays:[],
   week: mondayOf(todayISO()), tab:"roster", brush:null, dept:"", q:"",
-  sickdocs:{}, hrdocs:{}, assets:null,
+  sickdocs:{}, hrdocs:{}, assets:null, scGrades:null, scMonths:{},
   pending:{}, // weekId -> {sid: {cells, short, remark}}
 };
 try { const t = localStorage.getItem("mahima.tab"); if (t) S.tab = t; } catch(e){}
@@ -799,6 +823,47 @@ function docsSection(id){
       <div class="row"><input class="field" type="file" id="dFile" accept="application/pdf,image/png,image/jpeg,image/webp" style="flex:1;min-width:0"><button type="button" class="btn primary" id="dUpload">Upload</button></div>
       <div id="dMsg"></div></div>`:'<div class="note" style="margin-top:6px">Only managers with edit access can upload documents.</div>'}</div>`;
 }
+/* ---------- service charge ---------- */
+const SC_LEADS = ["sukma","fransiska","yudha","leoni","komang"]; // managers & supervisors: 100%
+const SC_PREOPEN_EXCEPT = ["intan"];                               // hired 2026 but counted as pre-opening: 75%
+function defaultGrade(s){
+  if(SC_LEADS.includes(s.id)) return 100;
+  if(SC_PREOPEN_EXCEPT.includes(s.id)) return 75;
+  return s.start >= "2026-01-01" ? 50 : 75;
+}
+function gradeOf(s){ const g=S.scGrades&&S.scGrades[s.id]; return g==null ? defaultGrade(s) : g; }
+function parseRp(v){ return Number(String(v||"").replace(/[^0-9]/g,""))||0; }
+const rp = n => "Rp " + Math.round(n).toLocaleString("id-ID");
+function nextMonth15(m){ const [y,mm]=m.split("-").map(Number); const d=new Date(y,mm,15); return iso(d); }
+let scLoaded=null;
+function scCompute(){
+  const m=$("#scMonth").value, pool=parseRp($("#scPool").value), pay=$("#scPay").value;
+  const list=staffList().filter(s=>s.start<=m+"-31");
+  const pts=list.reduce((n,s)=>n+gradeOf(s),0);
+  const rows=list.map(s=>{ const g=gradeOf(s); return {s,g,amt: pts? Math.floor(pool*g/pts) : 0}; });
+  return {m,pool,pay,rows,pts};
+}
+function renderSC(keepInputs){
+  const locked = !S.assets && S.scGrades===null;
+  $("#scLocked").hidden=!locked; $("#scBody").hidden=locked; if(locked) return;
+  if(!$("#scMonth").value) $("#scMonth").value=todayISO().slice(0,7);
+  const m=$("#scMonth").value;
+  if(!keepInputs && scLoaded!==m){ scLoaded=m; const saved=S.scMonths[m];
+    $("#scPool").value = saved? saved.pool.toLocaleString("id-ID") : ""; $("#scPay").value = saved? saved.payDate : nextMonth15(m); }
+  const {pool,rows,pts}=scCompute(), paid=rows.reduce((n,r)=>n+r.amt,0), saved=S.scMonths[m];
+  const cnt=g=>rows.filter(r=>r.g===g).length;
+  $("#scStats").innerHTML=[[pool?rp(pool):"—","Total for "+fmtMonth(m)],[pts? rp(pool*100/pts):"—","One 100% share"],[cnt(100)+" · "+cnt(75)+" · "+cnt(50),"Staff at 100% · 75% · 50%"],[pool?rp(pool-paid):"—","Left over from rounding"]]
+    .map(([n,l])=>`<div class="stat"><div class="n" style="font-size:24px">${n}</div><div class="l">${l}</div></div>`).join("");
+  const gsel=(s,g)=>`<select class="field" data-grade="${esc(s.id)}" aria-label="Grade for ${esc(s.name)}">${[100,75,50,0].map(v=>`<option value="${v}" ${v===g?"selected":""}>${v}%${v===0?" (none)":""}</option>`).join("")}</select>`;
+  $("#scTable").innerHTML=`<thead><tr><th>Staff</th><th>Contract</th><th>Started</th><th>Grade</th><th class="num">Share (Rp)</th>${saved?'<th class="num">Saved</th>':""}</tr></thead><tbody>${rows.map(r=>`<tr>
+    <td><b>${esc(r.s.name)}</b><div class="note">${esc(r.s.title||"")}</div></td><td><span class="pill mute">${esc(r.s.contract)}</span></td><td>${fmt(r.s.start)}</td>
+    <td>${gsel(r.s,r.g)}${r.g!==defaultGrade(r.s)?'<div class="note">changed by hand</div>':""}</td>
+    <td class="num"><b>${pool?rp(r.amt):"—"}</b></td>${saved?`<td class="num">${saved.rows[r.s.id]?rp(saved.rows[r.s.id].amount):"—"}</td>`:""}</tr>`).join("")}
+    <tr><td colspan="4"><b>Total</b></td><td class="num"><b>${pool?rp(paid):"—"}</b></td>${saved?`<td class="num">${rp(Object.values(saved.rows).reduce((n,r)=>n+r.amount,0))}</td>`:""}</tr></tbody>`;
+  const hist=Object.values(S.scMonths).sort((a,b)=>b.month.localeCompare(a.month));
+  $("#scHist").innerHTML = hist.length? `<div class="list">${hist.map(h=>`<div class="req"><div><div class="t">${fmtMonth(h.month)} · ${rp(h.pool)}</div><div class="d">Paid on ${fmt(h.payDate)} · ${Object.keys(h.rows).length} staff · saved ${fmt(h.savedAt.slice(0,10))}</div></div></div>`).join("")}</div>` : '<div class="note">Months you save show here.</div>';
+}
+
 function renderPayslips(){
   if(!$("#pMonth").value) $("#pMonth").value=S.payMonth;
   const m=$("#pMonth").value, list=staffList();
@@ -925,6 +990,7 @@ function renderAll(){
   if(S.tab==="holidays") renderHolidays();
   if(S.tab==="staff") renderStaff();
   if(S.tab==="docs") renderDocs();
+  if(S.tab==="sc") renderSC();
   renderRequests();
 }
 $("#tabs").addEventListener("click", e=>{ const b=e.target.closest("[data-tab]"); if(b) setTab(b.dataset.tab); });
@@ -942,6 +1008,26 @@ $("#brush").addEventListener("click", e=>{ const b=e.target.closest("[data-brush
 $("#rosterBody").addEventListener("click", e=>{ const b=e.target.closest(".cellbtn"); if(!b) return; const sid=b.dataset.sid, day=Number(b.dataset.day); if(S.brush!==null) paint(sid,day); else openCell(sid,day); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.brush!==null && !document.querySelector("dialog[open]")){ S.brush=null; renderBrush(); } });
 $("#leaveTable").addEventListener("click", e=>{ const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
+$("#scMonth").addEventListener("change", ()=>{ scLoaded=null; renderSC(); });
+$("#scPool").addEventListener("input", e=>{ const n=parseRp(e.target.value); e.target.value = n? n.toLocaleString("id-ID") : ""; renderSC(true); });
+$("#scTable").addEventListener("change", async e=>{
+  const sid=e.target.dataset.grade; if(!sid) return;
+  const grades={...(S.scGrades||{}), [sid]:Number(e.target.value)}; S.scGrades=grades; renderSC(true);
+  if(S.db){ try{ await S.db.doc("servicecharge/grades").set({grades, updatedAt:new Date().toISOString()}); toast("Grade saved"); }catch(err){ handleWriteError(err); } }
+});
+$("#scSave").addEventListener("click", async ()=>{
+  const {m,pool,pay,rows}=scCompute(); if(!pool){ $("#scMsg").innerHTML='<div class="msg bad">Enter the month\'s total service charge first.</div>'; return; }
+  const body={month:m, pool, payDate:pay, rows:Object.fromEntries(rows.map(r=>[r.s.id,{name:r.s.name, grade:r.g, amount:r.amt}])), savedAt:new Date().toISOString()};
+  S.scMonths[m]=body; renderSC(true);
+  try{ await S.db.doc("servicecharge/"+m).set(body); toast(fmtMonth(m)+" service charge saved"); }catch(err){ handleWriteError(err); }
+});
+$("#scExport").addEventListener("click", async ()=>{
+  const {m,pool,pay,rows}=scCompute(); const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const csv=[["Month","Paid on","Staff","Title","Grade %","Amount (Rp)"].map(q).join(","), ...rows.map(r=>[fmtMonth(m),pay,r.s.name,r.s.title,r.g,r.amt].map(q).join(",")), ["","","Total","","",rows.reduce((n,r)=>n+r.amt,0)].map(q).join(",")].join("\r\n");
+  const name=`mahima-service-charge-${m}.csv`;
+  if(!S.downloads){ try{ await navigator.clipboard.writeText(csv); toast("CSV copied to your clipboard"); }catch(e){ toast("Export isn't available in this view"); } return; }
+  try{ await S.downloads.save({filename:name, data:csv}); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't export the file"); }
+});
 $("#payTable").addEventListener("click", e=>{ if(e.target.closest("a")) return; const r=e.target.closest("[data-staff]"); if(r) openStaff(r.dataset.staff); });
 $("#pMonth").addEventListener("change", e=>{ S.payMonth=e.target.value||S.payMonth; renderPayslips(); });
 $("#bFiles").addEventListener("change", e=>{ const fs=[...e.target.files]; bulk = bulk.filter(b=>b.status!=="done").concat(fs.map(f=>({file:f, sid:matchStaff(f.name), until:"", status:""}))); e.target.value=""; renderBulk(); });
@@ -983,6 +1069,7 @@ function setSync(state){ const d=$("#syncDot"), t=$("#syncText"); d.className="d
   db.collection("staff").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.staff=o; rerender(); }, onErr);
   db.collection("weeks").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.weeks=o; rerender(); }, onErr);
   db.collection("requests").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.requests=o; rerender(); }, onErr);
+  db.collection("servicecharge").onSnapshot(snap=>{ const m={}; let g=null; snap.docs.forEach(d=>{ if(d.id==="grades") g=d.data().grades||{}; else m[d.id]=d.data(); }); S.scGrades=g; S.scMonths=m; rerender(); }, onErr);
   db.collection("hrdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.hrdocs=o; rerender(); }, onErr);
   db.collection("sickdocs").onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>o[d.id]=d.data()); S.sickdocs=o; rerender(); }, onErr);
   db.doc("config/holidays").onSnapshot(snap=>{ S.holidays = snap.exists ? (snap.data().items||[]) : []; rerender(); }, onErr);
