@@ -119,7 +119,8 @@ table.roster{border-collapse:separate;border-spacing:0;width:100%;min-width:880p
 .tag{font-size:10.5px;font-weight:600;padding:0 5px;border-radius:3px;background:var(--surface-2);color:var(--ink-2);letter-spacing:.03em}
 .tag.lock{background:var(--c-ph);color:var(--c-ph-ink)}
 .tag.warn{background:var(--warn-bg);color:var(--warn)}
-.roster td.cell{text-align:center;padding:3px;min-width:78px}
+.roster td.cell{text-align:center;padding:3px;min-width:96px}
+.chip.rng{font-size:12px;letter-spacing:0;padding:0 5px}
 .roster td.wkend{background:var(--weekend)}
 .roster td.today{background:var(--today)}
 .roster td.rem{padding:4px 8px;font-size:12px;color:var(--ink-2);min-width:120px;text-align:left}
@@ -404,11 +405,12 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
 "use strict";
 /* ---------- constants ---------- */
 const SHIFTS = [
-  {k:"M",   h:"06:30–07:00 start", d:"Morning", work:true},
-  {k:"M2",  h:"08:00 start", d:"Morning 2", work:true},
-  {k:"M3",  h:"12:00 start", d:"Middle / Manager on duty", work:true},
-  {k:"A",   h:"15:00 start", d:"Afternoon", work:true},
-  {k:"N",   h:"22:30–06:30", d:"Night security", work:true},
+  // shifts are shown by start time; every shift is 8 hours (older roster weeks store the letter keys)
+  {k:"M",   t:"06:30", h:"06:30–14:30 · 8 hrs", d:"Morning", work:true},
+  {k:"M2",  t:"08:00", h:"08:00–16:00 · 8 hrs", d:"Morning", work:true},
+  {k:"M3",  t:"12:00", h:"12:00–20:00 · 8 hrs", d:"Middle / Manager on duty", work:true},
+  {k:"A",   t:"15:00", h:"15:00–23:00 · 8 hrs", d:"Afternoon", work:true},
+  {k:"N",   t:"22:30", h:"22:30–06:30 · 8 hrs", d:"Night security", work:true},
   {k:"OFF", h:"—", d:"Day off (1 per week)", rest:true},
   {k:"EO",  h:"—", d:"Extra off · counted", rest:true, leave:true},
   {k:"PH",  h:"—", d:"Public holiday · counted", rest:true, leave:true},
@@ -451,8 +453,21 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2600); }
 
 /* ---------- code helpers ---------- */
-function chipClass(code){ if(!code) return "chip empty"; return "chip " + (SHIFT[code] ? "k-"+code : ""); }
-function chipHTML(code, short){ return `<span class="${chipClass(code)}${short?" short":""}">${code?esc(code):"·"}</span>`; }
+// a shift shows as its 8-hour range, e.g. 06.30–14.30 (custom start times too)
+function startOf(code){ return (SHIFT[code] && SHIFT[code].t) || code; }
+function label(code){
+  const t = startOf(code);
+  if(!/^\d\d:\d\d$/.test(t)) return code;
+  const [h,m] = t.split(":").map(Number), p = n => String(n).padStart(2,"0");
+  return `${p(h)}.${p(m)}–${p((h+8)%24)}.${p(m)}`;
+}
+function chipClass(code){
+  if(!code) return "chip empty";
+  const t = startOf(code);
+  if(/^\d\d:\d\d$/.test(t)){ const h=Number(t.slice(0,2))+Number(t.slice(3))/60; return "chip " + (h<7.5?"k-M":h<10?"k-M2":h<14?"k-M3":h<20?"k-A":"k-N"); }
+  return "chip " + (SHIFT[code] ? "k-"+code : "");
+}
+function chipHTML(code, short){ const l=code?label(code):"·"; return `<span class="${chipClass(code)}${short?" short":""}${l.includes("–")?" rng":""}">${esc(l)}</span>`; }
 function isWork(code){ if(!code) return false; const s=SHIFT[code]; return s ? !!s.work : !/^(OFF|L)$/.test(code); }
 function isRest(code){ const s=SHIFT[code]; return !!(s && s.rest); }
 
@@ -550,9 +565,9 @@ function handleWriteError(e){
 function renderBrush(){
   const b = $("#brush");
   const items = ["M","M2","M3","A","N","OFF","EO","PH","AL","SICK",""];
-  b.innerHTML = `<span class="lbl">Paint</span>` + items.map(k=>`<button type="button" data-brush="${k}" aria-pressed="${S.brush===k}" title="${k?esc(k+" · "+SHIFT[k].d):"Clear cell"}">${k?chipHTML(k):'<span class="chip empty">clear</span>'}</button>`).join("")
+  b.innerHTML = `<span class="lbl">Paint</span>` + items.map(k=>`<button type="button" data-brush="${k}" aria-pressed="${S.brush===k}" title="${k?esc(label(k)+" · "+SHIFT[k].d):"Clear cell"}">${k?chipHTML(k):'<span class="chip empty">clear</span>'}</button>`).join("")
     + `<button type="button" class="btn small" data-brush="__none" ${S.brush===null?"hidden":""}>Stop painting</button>`
-    + `<span class="hint">${S.brush===null?"Pick a code, then click cells to fill them fast. Or click any cell to edit it.":"Painting <b>"+esc(S.brush||"clear")+"</b> — click cells to apply."}</span>`;
+    + `<span class="hint">${S.brush===null?"Pick a shift, then click cells to fill them fast. Or click any cell to edit it.":"Painting <b>"+esc(S.brush?label(S.brush):"clear")+"</b> — click cells to apply."}</span>`;
 }
 function renderRoster(){
   const wk = S.week, days = DAYS.map((_,i)=>addDays(wk,i)), today = todayISO();
@@ -583,8 +598,8 @@ function renderRoster(){
       days.forEach((d,i)=>{
         const code=r.cells[i]||"", sh=!!r.short[i];
         const cls = ["cell", i>=5?"wkend":"", d===today?"today":""].join(" ");
-        const label = `${s.name}, ${DAYS[i]} ${fmtShort(d)}: ${code||"empty"}${sh?", short time":""}`;
-        body += `<td class="${cls}"><button type="button" class="cellbtn" data-sid="${esc(s.id)}" data-day="${i}" aria-label="${esc(label)}" ${!started&&!code?'title="Before start date"':""}>${chipHTML(code, sh)}</button></td>`;
+        const aria = `${s.name}, ${DAYS[i]} ${fmtShort(d)}: ${code?label(code):"empty"}${sh?", short time":""}`;
+        body += `<td class="${cls}"><button type="button" class="cellbtn" data-sid="${esc(s.id)}" data-day="${i}" aria-label="${esc(aria)}" ${!started&&!code?'title="Before start date"':""}>${chipHTML(code, sh)}</button></td>`;
       });
       body += `<td class="rem">${esc(r.remark)}</td></tr>`;
     }
@@ -594,7 +609,7 @@ function renderRoster(){
   $("#rosterBody").innerHTML = `<div class="gridwrap"><table class="roster">${head}<tbody>${body}</tbody></table></div>`;
 }
 function renderLegend(){
-  $("#legend").innerHTML = `<h3>Shift codes</h3>` + SHIFTS.map(s=>`<div>${chipHTML(s.k)}<p style="margin:0">${esc(s.d)}<br><span>${esc(s.h)}</span></p></div>`).join("")
+  $("#legend").innerHTML = `<h3>Shifts are shown by start time · every shift is 8 hours</h3>` + SHIFTS.map(s=>`<div>${chipHTML(s.k)}<p style="margin:0">${esc(s.d)}<br><span>${esc(s.h)}</span></p></div>`).join("")
    + `<div>${chipHTML("13:00")}<p style="margin:0">Custom start time<br><span>Type any time, e.g. 09:00</span></p></div>`
    + `<div>${chipHTML("M",true)}<p style="margin:0">Short time<br><span>Blue mark = shorter shift than normal</span></p></div>`;
 }
@@ -630,7 +645,7 @@ function drawCell(){
     <div class="meta">${DAYS[edit.day]} ${fmt(d)} · ${esc(s.title||"")}${hs.length?" · <b>"+hs.map(h=>esc(h.name)).join(", ")+"</b>":""}</div>
     <div class="codes">${SHIFTS.map(x=>{
       const dis = s.contract==="DW" && ["AL","EO","PH"].includes(x.k);
-      return `<button type="button" data-code="${x.k}" aria-pressed="${edit.code===x.k}" ${dis?"disabled":""} title="${esc(x.d)}"><span class="${chipClass(x.k)}">${x.k}<small>${esc(x.h==="—"?x.d.split(" ·")[0]:x.h)}</small></span></button>`;}).join("")}
+      return `<button type="button" data-code="${x.k}" aria-pressed="${edit.code===x.k}" ${dis?"disabled":""} title="${esc(x.d)}"><span class="${chipClass(x.k)}${x.t?" rng":""}">${esc(label(x.k))}<small>${esc(x.t?(x.k==="M3"?"8 hrs · MOD":x.k==="N"?"8 hrs · night":"8 hrs"):x.h==="—"?x.d.split(" ·")[0]:x.h)}</small></span></button>`;}).join("")}
       <button type="button" data-code="" aria-pressed="${!edit.code}"><span class="chip empty">clear</span></button>
     </div>
     <div class="row"><label class="check" for="cTime">Custom start</label><input class="field" id="cTime" type="time" value="${isCustom && /^\d\d:\d\d$/.test(edit.code)?edit.code:""}" style="width:130px"><input class="field" id="cText" placeholder="or any text" value="${isCustom && !/^\d\d:\d\d$/.test(edit.code)?esc(edit.code):""}" style="flex:1;min-width:100px"></div>
@@ -1232,7 +1247,7 @@ async function exportWeek(){
   const days=DAYS.map((_,i)=>addDays(S.week,i));
   const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const lines=[["Department","Name","Title","Contract",...days.map((d,i)=>DAYS[i]+" "+fmtShort(d)),"Remarks"].map(q).join(",")];
-  for(const s of staffList()){ const r=weekRow(S.week,s.id); lines.push([s.dept,s.name,s.title,s.contract,...r.cells.map((c,i)=>c+(r.short[i]?" (short)":"")),r.remark].map(q).join(",")); }
+  for(const s of staffList()){ const r=weekRow(S.week,s.id); lines.push([s.dept,s.name,s.title,s.contract,...r.cells.map((c,i)=>label(c)+(r.short[i]?" (short)":"")),r.remark].map(q).join(",")); }
   const csv=lines.join("\r\n"), name=`mahima-roster-week-${isoWeek(S.week)}-${S.week}.csv`;
   if(!S.downloads){ try{ await navigator.clipboard.writeText(csv); toast("Downloads aren't available here, so the CSV was copied to your clipboard"); }catch(e){ toast("Export isn't available in this view"); } return; }
   try{ await S.downloads.save({filename:name, data:csv}); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't export the file"); }
