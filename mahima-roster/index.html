@@ -311,7 +311,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     </div>
     <div id="noProof"></div>
     <div class="tablewrap"><table class="data" id="leaveTable"></table></div>
-    <p class="note">Staff on contract (SC) get 12 days annual leave + 5 public holidays a year. Everyone on staff by 1 Oct 2026 can use it from 1 Oct 2026; people who join later can use it after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
+    <p class="note">Permanent and temporary contract staff get 12 days annual leave + 5 public holidays a year. Everyone on staff by 1 Oct 2026 can use it from 1 Oct 2026; people who join later can use it after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers / probation (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
   </section>
 
 
@@ -445,7 +445,12 @@ function fmtShort(s){ const d=parse(s); return String(d.getDate()).padStart(2,"0
 function isoWeek(s){ const d=parse(s); d.setDate(d.getDate()+3-((d.getDay()+6)%7)); const w1=new Date(d.getFullYear(),0,4); return 1+Math.round(((d-w1)/864e5-3+((w1.getDay()+6)%7))/7); }
 // Everyone already on staff by 1 Oct 2026 can use leave from 1 Oct; people who join later wait 1 year.
 function eligibleFrom(st){ if(st.start<=LEAVE_START) return LEAVE_START; const d=parse(st.start); d.setFullYear(d.getFullYear()+1); return iso(d); }
-function isEligible(st){ return st.contract==="SC" && eligibleFrom(st) <= todayISO(); }
+const CONTRACTS = {PERM:"Permanent", TEMP:"Temporary", DW:"Daily worker / probation"};
+const cShort = c => ({PERM:"Permanent", TEMP:"Temporary", DW:"DW"}[c] || c || "");
+const onContract = st => st.contract==="PERM" || st.contract==="TEMP" || st.contract==="SC";
+// temporary contracts are renewed (and become permanent) after 1 year of service
+function renewalDate(st){ const d=parse(st.start); d.setFullYear(d.getFullYear()+1); return iso(d); }
+function isEligible(st){ return onContract(st) && eligibleFrom(st) <= todayISO(); }
 function daysBetween(a,b){ const out=[]; let c=a; while(c<=b && out.length<120){ out.push(c); c=addDays(c,1);} return out; }
 
 const $ = s => document.querySelector(s);
@@ -591,8 +596,8 @@ function renderRoster(){
       const filled = r.cells.filter(Boolean).length;
       const noRest = filled===7 && !r.cells.some(isRest);
       const started = s.start <= days[6];
-      const tags = [`<span class="tag">${esc(s.contract)}</span>`];
-      if(s.contract==="SC" && !isEligible(s)) tags.push(`<span class="tag lock" title="Leave unlocks ${fmt(eligibleFrom(s))}">Leave from ${fmtShort(eligibleFrom(s))} ${eligibleFrom(s).slice(0,4)}</span>`);
+      const tags = [`<span class="tag">${esc(cShort(s.contract))}</span>`];
+      if(onContract(s) && !isEligible(s)) tags.push(`<span class="tag lock" title="Leave unlocks ${fmt(eligibleFrom(s))}">Leave from ${fmtShort(eligibleFrom(s))} ${eligibleFrom(s).slice(0,4)}</span>`);
       if(noRest) tags.push(`<span class="tag warn" title="Everyone needs at least 1 day off a week">No day off</span>`);
       body += `<tr><th class="namecol" scope="row"><div class="who"><b>${esc(s.name)}</b><span>${esc(s.title||"")}</span><div class="tags">${tags.join("")}</div></div></th>`;
       days.forEach((d,i)=>{
@@ -627,7 +632,7 @@ function leaveWarning(sid, code, date){
   const s = S.staff[sid]; if(!s) return "";
   if(s.contract==="DW" && ["AL","EO","PH"].includes(code)) return {lvl:"bad", t:`${s.name} is a daily worker: no EO, AL or PH.`};
   if(WEEK_LOCK_TYPES.includes(code)){ const dc=deptWeekClashes(sid,date,date).filter(x=>!(x.how==="on the roster" && codeOn(sid,date)===code)); if(dc.length) return {lvl:"warn", t:`${dc[0].name} already has ${dc[0].type} this week in ${s.dept}. Only one person per department should be on leave per week.`}; }
-  if(s.contract==="SC" && ["AL","PH"].includes(code) && eligibleFrom(s) > date) return {lvl:"warn", t:`${s.name}'s leave unlocks on ${fmt(eligibleFrom(s))} (1 year of service).`};
+  if(onContract(s) && ["AL","PH"].includes(code) && eligibleFrom(s) > date) return {lvl:"warn", t:`${s.name}'s leave unlocks on ${fmt(eligibleFrom(s))} (1 year of service).`};
   if(code==="AL"||code==="PH"||code==="EO"){
     const t = tallies()[sid]; const cur = codeOn(sid,date)===code ? 0 : 1;
     if(code==="AL" && t.AL+cur>12) return {lvl:"warn", t:`This would be AL day ${t.AL+cur} of 12.`};
@@ -697,7 +702,7 @@ function meter(used,total,color){
 }
 function renderLeave(){
   const t = tallies(), list = staffList().filter(s=>!$("#leaveDept").value || s.dept===$("#leaveDept").value);
-  const sc = list.filter(s=>s.contract==="SC");
+  const sc = list.filter(onContract);
   const tot = k => list.reduce((n,s)=>n+t[s.id][k],0);
   $("#leaveStats").innerHTML = [
     [sc.filter(isEligible).length+" / "+sc.length,"Contract staff with leave unlocked"],
@@ -820,11 +825,11 @@ function renderStaff(){
   $("#staffBody").innerHTML = DEPTS.map(d=>{ const p=list.filter(s=>s.dept===d); if(!p.length) return "";
     return `<h2 class="sec">${esc(d)}</h2><div class="staffgrid">${p.map(s=>`<button type="button" class="scard" data-staff="${esc(s.id)}">
       <div class="n">${esc(s.name)}</div><div class="r">${esc(s.title||"")}</div>
-      <div class="f"><span class="pill mute">${esc(s.contract)}</span><span class="pill mute">Started ${fmt(s.start)}</span>${docPill(s)}${s.contract==="SC"?(isEligible(s)?'<span class="pill ok">Leave unlocked</span>':`<span class="pill warn">Leave from ${fmt(eligibleFrom(s))}</span>`):""}</div>
+      <div class="f"><span class="pill mute">${esc(cShort(s.contract))}</span><span class="pill mute">Started ${fmt(s.start)}</span>${docPill(s)}${s.contract==="TEMP"&&renewalDate(s)<=addDays(todayISO(),30)?`<span class="pill ${renewalDate(s)<todayISO()?"bad":"warn"}">Renewal ${renewalDate(s)<todayISO()?"overdue":"due"} ${fmt(renewalDate(s))}</span>`:""}${onContract(s)?(isEligible(s)?'<span class="pill ok">Leave unlocked</span>':`<span class="pill warn">Leave from ${fmt(eligibleFrom(s))}</span>`):""}</div>
       <div class="note">AL ${t[s.id].AL} · EO ${t[s.id].EO} · PH ${t[s.id].PH} · Sick/DC ${t[s.id].SICK}</div></button>`).join("")}</div>`; }).join("");
 }
 let staffEdit=null;
-const DOC_KINDS = {contract:"Employment contract (SC)", dw:"Daily Worker agreement (DW)", offer:"Employment offer letter", payslip:"Payslip", thr:"THR slip", other:"Other document / attachment"};
+const DOC_KINDS = {perm:"Permanent staff contract", temp:"Temporary staff contract", dw:"Daily Worker / probation agreement", contract:"Employment contract (older)", offer:"Employment offer letter", payslip:"Payslip", thr:"THR slip", other:"Other document / attachment"};
 function prevMonth(){ const d=parse(todayISO()); d.setDate(1); d.setMonth(d.getMonth()-1); return iso(d).slice(0,7); }
 function fmtMonth(m){ if(!m) return ""; const [y,mm]=m.split("-"); return MONTHS[Number(mm)-1]+" "+y; }
 S.payMonth = prevMonth();
@@ -870,9 +875,10 @@ async function runBulk(){
   const n=bulk.filter(b=>b.status==="done").length; toast(n+" file"+(n===1?"":"s")+" uploaded"); renderAll();
 }
 function docsOf(sid){ return Object.entries(S.hrdocs).map(([id,d])=>({id,...d})).filter(d=>d.staffId===sid).sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||"")); }
-function mainDoc(s){ const want = s.contract==="DW" ? "dw" : "contract"; return docsOf(s.id).find(d=>d.kind===want) || null; }
+function mainKind(s){ return s.contract==="DW" ? "dw" : s.contract==="PERM" ? "perm" : "temp"; }
+function mainDoc(s){ const want = mainKind(s); return docsOf(s.id).find(d=>d.kind===want || (d.kind==="contract" && want!=="dw")) || null; }
 function docStatus(s){
-  const d=mainDoc(s); if(!d) return {lvl:"bad", t:s.contract==="DW"?"No DW agreement":"No contract"};
+  const d=mainDoc(s); if(!d) return {lvl:"bad", t:s.contract==="DW"?"No DW agreement":s.contract==="PERM"?"No permanent contract":"No temporary contract"};
   if(d.until){ const left=Math.round((parse(d.until)-parse(todayISO()))/864e5);
     if(left<0) return {lvl:"bad", t:"Expired "+fmt(d.until)};
     if(left<=30) return {lvl:"warn", t:"Ends in "+left+" day"+(left===1?"":"s")}; }
@@ -887,7 +893,7 @@ function docsSection(id){
       <div class="d"><a href="/_blob/${esc(d.assetId)}" target="_blank" rel="noopener">Open ${esc(d.fileName||"file")}</a></div></div>
       <div class="acts">${S.assets?`<button type="button" class="btn small danger" data-deldoc="${esc(d.id)}">Delete</button>`:""}</div></div>`).join(""):'<span class="note">No documents yet.</span>'}</div>
     ${S.assets?`<div class="proof" style="margin-top:10px">
-      <div class="row"><select class="field" id="dKind" aria-label="Document type">${Object.entries(DOC_KINDS).map(([k,v])=>`<option value="${k}" ${(S.staff[id].contract==="DW"?"dw":"contract")===k?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="row"><select class="field" id="dKind" aria-label="Document type">${Object.entries(DOC_KINDS).map(([k,v])=>`<option value="${k}" ${mainKind(S.staff[id])===k?"selected":""}>${v}</option>`).join("")}</select></div>
       <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label>Valid from (payslip: any day in its month)<input class="field" type="date" id="dFrom"></label><label>Valid until (optional)<input class="field" type="date" id="dUntil"></label></div>
       <input class="field" id="dNote" placeholder="Note, e.g. 1-year contract, salary review Jan">
       <div class="row"><input class="field" type="file" id="dFile" accept="application/pdf,image/png,image/jpeg,image/webp" style="flex:1;min-width:0"><button type="button" class="btn primary" id="dUpload">Upload</button></div>
@@ -973,7 +979,7 @@ function drawPayslip(doc, s, m, r){
   doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("PAYSLIP", R-16, 15, {align:"right"});
   doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(fmtMonth(m), R-16, 22, {align:"right"});
   doc.setTextColor(22,33,30); let y=48;
-  const info=[["Name", r.bankName||s.name],["Position", s.title||""],["Department", s.dept||""],["Contract", s.contract==="DW"?"Daily worker":"Staff contract"],["Start date", fmt(s.start)],["Bank account", r.bank||"—"]];
+  const info=[["Name", r.bankName||s.name],["Position", s.title||""],["Department", s.dept||""],["Contract", CONTRACTS[s.contract]||"Staff contract"],["Start date", fmt(s.start)],["Bank account", r.bank||"—"]];
   doc.setFontSize(9.5);
   info.forEach(([k,v],i)=>{ const x = i%2? 110 : L, yy = y + Math.floor(i/2)*8; doc.setTextColor(110,125,120); doc.text(k.toUpperCase(), x, yy); doc.setTextColor(22,33,30); doc.text(String(v), x+30, yy); });
   y += 30;
@@ -1046,7 +1052,7 @@ function thrEvents(){
   ev.forEach(e=>e.pay=addDays(e.holiday,-THR_DAYS_BEFORE));
   return ev.filter(e=>e.holiday>=addDays(todayISO(),-60)).sort((a,b)=>a.holiday.localeCompare(b.holiday));
 }
-function thrStaff(e){ return staffList().filter(s=>s.contract==="SC" && s.phGroup===e.group && s.start<=e.pay); }
+function thrStaff(e){ return staffList().filter(s=>onContract(s) && s.phGroup===e.group && s.start<=e.pay); }
 function thrBasic(s){ const m=todayISO().slice(0,7); return payDefaults(s,m).basic || 0; }
 function thrAmount(e,s){ const saved=S.thr["thr-"+e.id]?.rows?.[s.id]; const ed=thrEdits[e.id]?.[s.id];
   return ed!=null ? ed : saved ? saved.amount : Math.round(thrBasic(s)*THR_SHARE); }
@@ -1150,7 +1156,7 @@ function renderSC(keepInputs){
     .map(([n,l])=>`<div class="stat"><div class="n" style="font-size:24px">${n}</div><div class="l">${l}</div></div>`).join("");
   const gsel=(s,g)=>`<select class="field" data-grade="${esc(s.id)}" aria-label="Grade for ${esc(s.name)}">${[100,75,50,0].map(v=>`<option value="${v}" ${v===g?"selected":""}>${v}%${v===0?" (none)":""}</option>`).join("")}</select>`;
   $("#scTable").innerHTML=`<thead><tr><th>Staff</th><th>Contract</th><th>Started</th>${scShowGrades?"<th>Grade</th>":""}<th class="num">Share (Rp)</th>${saved?'<th class="num">Saved</th>':""}</tr></thead><tbody>${rows.map(r=>`<tr>
-    <td><b>${esc(r.s.name)}</b><div class="note">${esc(r.s.title||"")}</div></td><td><span class="pill mute">${esc(r.s.contract)}</span></td><td>${fmt(r.s.start)}</td>
+    <td><b>${esc(r.s.name)}</b><div class="note">${esc(r.s.title||"")}</div></td><td><span class="pill mute">${esc(cShort(r.s.contract))}</span></td><td>${fmt(r.s.start)}</td>
     ${scShowGrades?`<td>${gsel(r.s,r.g)}${r.g!==defaultGrade(r.s)?'<div class="note">changed by hand</div>':""}</td>`:""}
     <td class="num"><b>${pool?rp(r.amt):"—"}</b></td>${saved?`<td class="num">${saved.rows[r.s.id]?rp(saved.rows[r.s.id].amount):"—"}</td>`:""}</tr>`).join("")}
     <tr><td colspan="${scShowGrades?4:3}"><b>Total</b></td><td class="num"><b>${pool?rp(paid):"—"}</b></td>${saved?`<td class="num">${rp(Object.values(saved.rows).reduce((n,r)=>n+r.amount,0))}</td>`:""}</tr></tbody>`;
@@ -1165,7 +1171,7 @@ function renderPayslips(){
   const have=list.filter(s=>slips.some(d=>d.staffId===s.id)).length;
   $("#payCount").textContent = `${have} of ${list.length} payslips uploaded for ${fmtMonth(m)}`;
   $("#payTable").innerHTML=`<thead><tr><th>Staff</th><th>Contract</th><th>${esc(fmtMonth(m))} payslip</th></tr></thead><tbody>${list.map(s=>{ const mine=slips.filter(d=>d.staffId===s.id);
-    return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td><td><span class="pill mute">${esc(s.contract)}</span></td>
+    return `<tr class="click" data-staff="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")}</div></td><td><span class="pill mute">${esc(cShort(s.contract))}</span></td>
     <td>${mine.length?mine.map(d=>`<a href="/_blob/${esc(d.assetId)}" target="_blank" rel="noopener">${esc(d.fileName||"Open")}</a>`).join(" · "):'<span class="pill warn">Missing</span>'}</td></tr>`;}).join("")}</tbody>`;
 }
 function renderDocs(){
@@ -1175,14 +1181,14 @@ function renderDocs(){
   $("#docStats").innerHTML=[[c("ok")+" / "+list.length,"Contracts or DW agreements on file"],[c("warn"),"Ending within 30 days"],[c("bad"),"Missing or expired"],[Object.keys(S.hrdocs).length,"Documents stored"]]
     .map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
   $("#docTable").innerHTML=`<thead><tr><th>Staff</th><th>Type</th><th>Status</th><th>Main document</th><th>Offer letter</th><th class="num">All docs</th></tr></thead><tbody>${sts.map(({s,st,d,offer})=>`<tr class="click" data-staff="${esc(s.id)}">
-    <td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")} · ${esc(s.dept)}</div></td><td><span class="pill mute">${esc(s.contract)}</span></td>
+    <td><b>${esc(s.name)}</b><div class="note">${esc(s.title||"")} · ${esc(s.dept)}</div></td><td><span class="pill mute">${esc(cShort(s.contract))}</span></td>
     <td><span class="pill ${st.lvl}">${esc(st.t)}</span></td>
     <td>${d?`<a href="/_blob/${esc(d.assetId)}" target="_blank" rel="noopener">${esc(d.fileName||"Open")}</a>`:'<span class="note">—</span>'}</td>
     <td>${offer?`<a href="/_blob/${esc(offer.assetId)}" target="_blank" rel="noopener">${esc(offer.fileName||"Open")}</a>`:'<span class="note">—</span>'}</td>
     <td class="num">${docsOf(s.id).length}</td></tr>`).join("")}</tbody>`;
 }
 function openStaff(id){
-  const s = id? S.staff[id] : {name:"",title:"",dept:DEPTS[0],contract:"SC",start:todayISO(),eoFwd:0,phGroup:"Hindu"};
+  const s = id? S.staff[id] : {name:"",title:"",dept:DEPTS[0],contract:"TEMP",start:todayISO(),eoFwd:0,phGroup:"Hindu"};
   staffEdit={id, ...s};
   const hist = id ? tallies()[id].days : [];
   $("#staffForm").innerHTML = `<h3>${id?esc(s.name):"Add staff"}</h3>
@@ -1190,7 +1196,7 @@ function openStaff(id){
       <label>Name<input class="field" id="sfName" value="${esc(s.name)}" required></label>
       <label>Job title<input class="field" id="sfTitle" value="${esc(s.title||"")}"></label>
       <div class="row2"><label>Department<select class="field" id="sfDept">${DEPTS.map(d=>`<option ${d===s.dept?"selected":""}>${esc(d)}</option>`).join("")}</select></label>
-      <label>Contract<select class="field" id="sfContract"><option value="SC" ${s.contract==="SC"?"selected":""}>SC · Staff contract</option><option value="DW" ${s.contract==="DW"?"selected":""}>DW · Daily worker</option></select></label></div>
+      <label>Contract<select class="field" id="sfContract">${Object.entries(CONTRACTS).map(([k,v])=>`<option value="${k}" ${s.contract===k?"selected":""}>${v}</option>`).join("")}</select></label></div>
       <div class="row2"><label>Start date<input class="field" type="date" id="sfStart" value="${esc(s.start)}"></label>
       <label>EO balance on 1 Oct<input class="field" type="number" id="sfEo" value="${s.eoFwd||0}" min="-60" max="60"></label></div>
       <label>PH group<select class="field" id="sfPh">${["Hindu","Catholic","None"].map(g=>`<option ${g===s.phGroup?"selected":""}>${g}</option>`).join("")}</select></label>
@@ -1247,7 +1253,7 @@ async function exportWeek(){
   const days=DAYS.map((_,i)=>addDays(S.week,i));
   const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const lines=[["Department","Name","Title","Contract",...days.map((d,i)=>DAYS[i]+" "+fmtShort(d)),"Remarks"].map(q).join(",")];
-  for(const s of staffList()){ const r=weekRow(S.week,s.id); lines.push([s.dept,s.name,s.title,s.contract,...r.cells.map((c,i)=>label(c)+(r.short[i]?" (short)":"")),r.remark].map(q).join(",")); }
+  for(const s of staffList()){ const r=weekRow(S.week,s.id); lines.push([s.dept,s.name,s.title,cShort(s.contract),...r.cells.map((c,i)=>label(c)+(r.short[i]?" (short)":"")),r.remark].map(q).join(",")); }
   const csv=lines.join("\r\n"), name=`mahima-roster-week-${isoWeek(S.week)}-${S.week}.csv`;
   if(!S.downloads){ try{ await navigator.clipboard.writeText(csv); toast("Downloads aren't available here, so the CSV was copied to your clipboard"); }catch(e){ toast("Export isn't available in this view"); } return; }
   try{ await S.downloads.save({filename:name, data:csv}); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't export the file"); }
