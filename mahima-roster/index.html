@@ -135,7 +135,7 @@ tr.cover td.namecol{background:var(--surface-2);font-weight:600;color:var(--ink-
 .chip.short::after{content:"";position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--short);box-shadow:0 0 0 1.5px var(--surface)}
 .chip.short{box-shadow:inset 0 -3px 0 var(--short)}
 .k-M{background:var(--c-m);color:var(--c-m-ink)} .k-M2{background:var(--c-m2);color:var(--c-m2-ink)}
-.k-M3{background:var(--c-m3);color:var(--c-m3-ink)} .k-MD{background:var(--c-mod);color:var(--c-mod-ink)}
+.k-M3{background:var(--c-m3);color:var(--c-m3-ink)} 
 .k-A{background:var(--c-a);color:var(--c-a-ink)}
 .k-N{background:var(--c-n);color:var(--c-n-ink)} .k-OFF{background:var(--c-off);color:var(--c-off-ink);font-weight:500}
 .k-EO{background:var(--c-eo);color:var(--c-eo-ink)} .k-PH{background:var(--c-ph);color:var(--c-ph-ink)}
@@ -272,7 +272,7 @@ dialog::backdrop{background:rgba(10,20,18,.45)}
     <div class="bar">
       <select class="field" id="leaveDept" aria-label="Department"><option value="">All departments</option></select>
       <div class="grow"></div>
-      <span class="note">Counts come straight from the roster: every AL, EO, PH, SICK or DC typed in a cell is counted here.</span>
+      <span class="note">Counting starts 1 Oct 2026: everyone begins with 17 (12 AL + 5 PH). Every AL, EO, PH, SICK or DC typed in the roster from 1 Oct on is counted here.</span>
     </div>
     <div class="tablewrap"><table class="data" id="leaveTable"></table></div>
     <p class="note">Rules from the master sheet: staff on contract (SC) get 12 days annual leave + 5 public holidays a year, usable after 1 full year of service. “Left of 17” = 17 − AL − EO − PH taken. Daily workers (DW) get no EO, AL or PH. Hindu staff PH: Galungan ×2, Kuningan ×2, Nyepi. Catholic staff PH: Christmas ×2, Easter ×2, Nyepi.</p>
@@ -336,7 +336,6 @@ const SHIFTS = [
   {k:"M",   h:"06:30–14:30", d:"Morning", work:true},
   {k:"M2",  h:"08:00–16:00", d:"Morning 2", work:true},
   {k:"M3",  h:"12:00–20:00", d:"Mid-day", work:true},
-  {k:"MD",  h:"09:00–17:00", d:"Manager on duty (MD = MOD)", work:true},
   {k:"A",   h:"15:00–23:00", d:"Afternoon / evening", work:true},
   {k:"N",   h:"22:30–06:30", d:"Night security", work:true},
   {k:"OFF", h:"—", d:"Day off (1 per week)", rest:true},
@@ -350,6 +349,7 @@ const SHIFTS = [
 const SHIFT = Object.fromEntries(SHIFTS.map(s => [s.k, s]));
 const DEPTS = ["Reception","Housekeeping & Security","F&B","Kitchen","Coaches"];
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const LEAVE_START = "2026-10-01"; // leave balances count from this date: everyone starts at 17 (12 AL + 5 PH)
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 /* ---------- state ---------- */
@@ -410,7 +410,7 @@ function tallies(){
   for(const wk of weekIds){
     for(const sid of Object.keys(t)){
       const r = weekRow(wk,sid);
-      r.cells.forEach((c,i)=>{ if(c in t[sid]){ t[sid][c]++; t[sid].days.push({date:addDays(wk,i),code:c}); } });
+      r.cells.forEach((c,i)=>{ if(c in t[sid] && addDays(wk,i)>=LEAVE_START){ t[sid][c]++; t[sid].days.push({date:addDays(wk,i),code:c}); } });
     }
   }
   for(const sid in t) t[sid].days.sort((a,b)=>a.date.localeCompare(b.date));
@@ -455,7 +455,7 @@ function handleWriteError(e){
 /* ---------- rendering: roster ---------- */
 function renderBrush(){
   const b = $("#brush");
-  const items = ["M","M2","M3","MD","A","N","OFF","EO","PH","AL","SICK","DC",""];
+  const items = ["M","M2","M3","A","N","OFF","EO","PH","AL","SICK","DC",""];
   b.innerHTML = `<span class="lbl">Paint</span>` + items.map(k=>`<button type="button" data-brush="${k}" aria-pressed="${S.brush===k}" title="${k?esc(k+" · "+SHIFT[k].d):"Clear cell"}">${k?chipHTML(k):'<span class="chip empty">clear</span>'}</button>`).join("")
     + `<button type="button" class="btn small" data-brush="__none" ${S.brush===null?"hidden":""}>Stop painting</button>`
     + `<span class="hint">${S.brush===null?"Pick a code, then click cells to fill them fast. Or click any cell to edit it.":"Painting <b>"+esc(S.brush||"clear")+"</b> — click cells to apply."}</span>`;
@@ -522,7 +522,7 @@ function leaveWarning(sid, code, date){
     const t = tallies()[sid]; const cur = codeOn(sid,date)===code ? 0 : 1;
     if(code==="AL" && t.AL+cur>12) return {lvl:"warn", t:`This would be AL day ${t.AL+cur} of 12.`};
     if(code==="PH" && t.PH+cur>5) return {lvl:"warn", t:`This would be PH day ${t.PH+cur} of 5.`};
-    if(code==="EO" && t.EO+cur>(s.eoFwd||0)) return {lvl:"warn", t:`Only ${s.eoFwd||0} EO brought forward; this goes over.`};
+    if(code==="EO" && t.EO+cur>(s.eoFwd||0)) return {lvl:"warn", t:`Only ${s.eoFwd||0} EO left from 1 Oct; this goes over.`};
   }
   return "";
 }
@@ -549,7 +549,7 @@ $("#cellForm").addEventListener("click", e=>{
   if(b && !b.disabled){ edit.code=b.dataset.code; $("#cTime") && (edit.short=$("#cShort").checked, edit.remark=$("#cRemark").value); drawCell(); return; }
   if(e.target.id==="cSave"){
     const t=$("#cTime").value, tx=$("#cText").value.trim().toUpperCase();
-    if(t) edit.code=t; else if(tx) edit.code=(tx==="MOD"?"MD":tx);
+    if(t) edit.code=t; else if(tx) edit.code=tx;
     const r = weekRow(S.week, edit.sid);
     const cells=[...r.cells], short=[...r.short];
     cells[edit.day]=edit.code; short[edit.day]=$("#cShort").checked?1:0;
@@ -580,7 +580,7 @@ function renderLeave(){
   const tot = k => list.reduce((n,s)=>n+t[s.id][k],0);
   $("#leaveStats").innerHTML = [
     [sc.filter(isEligible).length+" / "+sc.length,"Contract staff with leave unlocked"],
-    [tot("AL"),"AL days taken"],[tot("EO"),"EO days taken"],[tot("PH"),"PH days taken"],[tot("SICK")+tot("DC"),"Sick / did-not-come days"],
+    [tot("AL"),"AL days taken since 1 Oct"],[tot("EO"),"EO days taken since 1 Oct"],[tot("PH"),"PH days taken since 1 Oct"],[tot("SICK")+tot("DC"),"Sick / did-not-come since 1 Oct"],
   ].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
   const rows = list.map(s=>{
     const x=t[s.id];
@@ -594,7 +594,7 @@ function renderLeave(){
       <td class="num">${x.SICK+x.DC||"—"}</td>
       <td class="num"><b class="${left<0?"neg":""}" style="font:700 20px var(--display)">${left}</b></td></tr>`;
   }).join("");
-  $("#leaveTable").innerHTML = `<thead><tr><th>Staff</th><th>Leave status</th><th>Annual leave (AL)</th><th>Public holiday (PH)</th><th class="num">EO brought fwd</th><th class="num">EO used</th><th class="num">EO left</th><th class="num">Sick / DC</th><th class="num">Left of 17</th></tr></thead><tbody>${rows}</tbody>`;
+  $("#leaveTable").innerHTML = `<thead><tr><th>Staff</th><th>Leave status</th><th>Annual leave (AL)</th><th>Public holiday (PH)</th><th class="num">EO balance 1 Oct</th><th class="num">EO used</th><th class="num">EO left</th><th class="num">Sick / DC</th><th class="num">Left of 17</th></tr></thead><tbody>${rows}</tbody>`;
 }
 
 /* ---------- requests ---------- */
@@ -682,9 +682,9 @@ function openStaff(id){
       <div class="row2"><label>Department<select class="field" id="sfDept">${DEPTS.map(d=>`<option ${d===s.dept?"selected":""}>${esc(d)}</option>`).join("")}</select></label>
       <label>Contract<select class="field" id="sfContract"><option value="SC" ${s.contract==="SC"?"selected":""}>SC · Staff contract</option><option value="DW" ${s.contract==="DW"?"selected":""}>DW · Daily worker</option></select></label></div>
       <div class="row2"><label>Start date<input class="field" type="date" id="sfStart" value="${esc(s.start)}"></label>
-      <label>EO brought forward<input class="field" type="number" id="sfEo" value="${s.eoFwd||0}" min="0" max="60"></label></div>
+      <label>EO balance on 1 Oct<input class="field" type="number" id="sfEo" value="${s.eoFwd||0}" min="-60" max="60"></label></div>
       <label>PH group<select class="field" id="sfPh">${["Hindu","Catholic","None"].map(g=>`<option ${g===s.phGroup?"selected":""}>${g}</option>`).join("")}</select></label>
-      ${id?`<div><div class="note" style="margin-bottom:6px">Leave &amp; absence on the roster (${hist.length})</div><div class="hist">${hist.length?hist.map(h=>`<span class="${chipClass(h.code)}">${h.code}<span style="font:500 10px var(--body)">${fmtShort(h.date)}</span></span>`).join(""):'<span class="note">None yet</span>'}</div></div>`:""}
+      ${id?`<div><div class="note" style="margin-bottom:6px">Leave &amp; absence since 1 Oct (${hist.length})</div><div class="hist">${hist.length?hist.map(h=>`<span class="${chipClass(h.code)}">${h.code}<span style="font:500 10px var(--body)">${fmtShort(h.date)}</span></span>`).join(""):'<span class="note">None yet</span>'}</div></div>`:""}
       <div id="sfMsg"></div>
     </div>
     <div class="foot">${id?`<button type="button" class="btn danger" id="sfArchive">Remove from roster</button>`:"<span></span>"}<div class="row"><button class="btn" value="cancel">Cancel</button><button type="button" class="btn primary" id="sfSave">Save</button></div></div>`;
